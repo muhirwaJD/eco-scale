@@ -207,4 +207,6 @@ marimo/_lsp/
 __marimo__/
 
 # Ignore the md files
-*.md
+assigment.md
+mission-specification.md
+report-template.md
