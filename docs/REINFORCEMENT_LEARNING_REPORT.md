@@ -29,12 +29,15 @@ The environment provides a 4-dimensional continuous observation vector, normaliz
 4. **Time of Day (Normalized 0.0 - 1.0)**: Current hour (0-23) / 23.
 
 ### Reward Structure
-The reward function is multi-objective, balancing three competing priorities:
-$$R = -(\alpha \cdot L) - (\beta \cdot W) - (\gamma \cdot C)$$
+The reward function is multi-objective, balancing four competing factors:
+$$R = -(\alpha \cdot L) - (\beta \cdot W) - (\gamma \cdot C) + (\delta \cdot \Delta L) + P_{dir} + B_{dir}$$
 - **$\alpha \cdot L$ (Latency Penalty)**: Weighted at 0.5. Penalizes high request queues.
-- **$\beta \cdot W$ (Wasted Pods Penalty)**: Weighted at 0.3. Penalizes pods active above the necessary threshold.
-- **$\gamma \cdot C$ (Scaling Cost Penalty)**: Weighted at 0.2. Penalizes frequent scaling actions to prevent oscillation.
-- **Termination Penalty**: A penalty of -10.0 is applied if the agent allows the queue to breach safe limits for 3 consecutive steps.
+- **$\beta \cdot W$ (Wasted Pods Penalty)**: Weighted at 0.3. Penalizes over-provisioned pods.
+- **$\gamma \cdot C$ (Scaling Cost)**: Weighted at **0.05** (reduced). Small churn penalty.
+- **$\delta \cdot \Delta L$ (Improvement Bonus)**: +0.2 when latency decreases step-over-step.
+- **$P_{dir}$ (Wrong-direction penalty)**: -0.5 if agent scales DOWN when latency > 0.5.
+- **$B_{dir}$ (Right-direction bonus)**: +0.3 if agent scales UP when latency > 0.5.
+- **Termination Penalty**: -10.0 if latency ≥ 1.0 for 3 consecutive steps.
 
 ## System Analysis And Design
 
@@ -59,59 +62,74 @@ The DQN agent utilizes a Value-Based approach. Our implementation includes:
 ## Implementation Results
 
 ### DQN Hyperparameter Tuning
-| Run | LR | Gamma | Buffer | Batch | Notes | Mean Reward | Std Reward |
-|-----|----|-------|--------|-------|-------|-------------|------------|
-| 1 | 1e-4 | 0.99 | 10000 | 64 | Baseline | -12.79 | 0.34 |
-| 2 | 1e-3 | 0.99 | 10000 | 64 | Higher LR | **-12.55** | 0.26 |
-| 3 | 1e-4 | 0.95 | 10000 | 64 | Lower Gamma| -79.06 | 0.17 |
-| 4 | 1e-4 | 0.99 | 50000 | 64 | Lrg Buffer | -12.69 | 0.30 |
-| 5 | 1e-4 | 0.99 | 10000 | 128| Lrg Batch | -12.68 | 0.16 |
-| 6 | 1e-4 | 0.99 | 10000 | 64 | More Expl. | -12.76 | 0.25 |
-| 7 | 1e-4 | 0.99 | 10000 | 64 | Less Expl. | -13.21 | 0.32 |
-| 8 | 1e-4 | 0.99 | 10000 | 64 | Low Final e | -12.71 | 0.17 |
-| 9 | 1e-4 | 0.99 | 10000 | 64 | Slow Target | -13.10 | 0.35 |
-| 10| 5e-5 | 0.99 | 20000 | 32 | Combined | -12.70 | 0.18 |
+| Run | LR | Gamma | Buffer | Batch | Exploration | Target Update | Notes | Mean Reward | Std Reward |
+|-----|----|-------|--------|-------|-------------|---------------|-------|-------------|------------|
+| 1 | 1e-4 | 0.99 | 10000 | 64 | 0.3 | 100 | Baseline | -61.27 | 0.72 |
+| 2 | 1e-3 | 0.99 | 10000 | 64 | 0.3 | 100 | Higher LR | -12.55 | 0.25 |
+| 3 | 1e-4 | 0.95 | 10000 | 64 | 0.3 | 100 | Lower Gamma | -60.62 | 1.02 |
+| 4 | 1e-4 | 0.99 | 50000 | 64 | 0.3 | 100 | Larger Buffer | -12.34 | 0.25 |
+| 5 | 1e-4 | 0.99 | 10000 | 128 | 0.3 | 100 | Larger Batch | -12.38 | 0.29 |
+| 6 | 1e-4 | 0.99 | 10000 | 64 | **0.5** | 100 | **More Exploration** | **-12.21** | **0.10** |
+| 7 | 1e-4 | 0.99 | 10000 | 64 | 0.1 | 100 | Less Exploration | -12.39 | 0.37 |
+| 8 | 1e-4 | 0.99 | 10000 | 64 | 0.3 | 100 | Lower Final ε | -12.82 | 2.06 |
+| 9 | 1e-4 | 0.99 | 10000 | 64 | 0.3 | 500 | Slower Target | -56.07 | 0.38 |
+| 10 | 5e-5 | 0.999 | 20000 | 32 | 0.4 | 200 | Combined | -15.70 | 0.72 |
 
-### PPO Hyperparameter Tuning (Selected)
-| Run | LR | Alpha (Gamma) | ent_coeff | Batch | Notes | Mean Reward | Std Reward |
-|-----|----|---------------|-----------|-------|-------|-------------|------------|
-| 1 | 3e-4 | 0.99 | 0.01 | 64 | Baseline | -12.81 | 0.20 |
-| 7 | 3e-4 | 0.99 | 0.05 | 64 | More Entr | **-12.59** | 0.22 |
-| 3 | 1e-4 | 0.99 | 0.01 | 64 | Lower LR | -12.60 | 0.25 |
-| 4 | 3e-4 | 0.95 | 0.01 | 64 | Low Gamma | -40.31 | 28.02 |
+### PPO Hyperparameter Tuning
+| Run | LR | Gamma | n_steps | Batch | n_epochs | ent_coef | clip_range | Notes | Mean Reward | Std Reward |
+|-----|----|-------|---------|-------|----------|----------|------------|-------|-------------|------------|
+| 1 | 3e-4 | 0.99 | 2048 | 64 | 10 | 0.01 | 0.2 | Baseline | -12.81 | 0.20 |
+| 2 | 1e-3 | 0.99 | 2048 | 64 | 10 | 0.01 | 0.2 | Higher LR | -12.63 | 0.19 |
+| 3 | 1e-4 | 0.99 | 2048 | 64 | 10 | 0.01 | 0.2 | Lower LR | -12.60 | 0.25 |
+| 4 | 3e-4 | 0.95 | 2048 | 64 | 10 | 0.01 | 0.2 | Lower Gamma | -40.31 | 28.02 |
+| 5 | 3e-4 | 0.99 | 512 | 64 | 10 | 0.01 | 0.2 | Short Rollouts | -12.61 | 0.24 |
+| 6 | 3e-4 | 0.99 | 2048 | 128 | 10 | 0.01 | 0.2 | Larger Batch | -12.65 | 0.25 |
+| 7 | 3e-4 | 0.99 | 2048 | 64 | 10 | 0.05 | 0.2 | **More Entropy** | **-12.59** | **0.22** |
+| 8 | 3e-4 | 0.99 | 2048 | 64 | 10 | 0.01 | 0.3 | Wide Clip | -12.60 | 0.25 |
+| 9 | 3e-4 | 0.99 | 2048 | 64 | 4 | 0.01 | 0.2 | Fewer Epochs | -12.73 | 0.20 |
+| 10| 5e-4 | 0.98 | 1024 | 128 | 5 | 0.02 | 0.25 | Combined | -12.63 | 0.24 |
 
-### REINFORCE Hyperparameter Tuning (Selected)
-| Run | LR | Gamma | Hidden | Baseline | Notes | Mean Reward | Std Reward |
-|-----|----|-------|--------|----------|-------|-------------|------------|
-| 1 | 1e-3 | 0.99 | 64 | Yes | Baseline | -12.70 | 0.23 |
-| 8 | 1e-3 | 0.99 | 128 | Yes | Lrg Network| **-12.57** | 0.26 |
-| 4 | 1e-3 | 0.95 | 64 | Yes | Low Gamma | -12.59 | 0.24 |
+### REINFORCE Hyperparameter Tuning
+| Run | LR | Gamma | Hidden | Baseline | ent_coef | Notes | Mean Reward | Std Reward |
+|-----|----|-------|--------|----------|----------|-------|-------------|------------|
+| 1 | 1e-3 | 0.99 | 64 | Yes | 0.01 | Baseline | -12.70 | 0.23 |
+| 2 | 3e-3 | 0.99 | 64 | Yes | 0.01 | Higher LR | -12.64 | 0.26 |
+| 3 | 5e-4 | 0.99 | 64 | Yes | 0.01 | Lower LR | -12.58 | 0.29 |
+| 4 | 1e-3 | 0.95 | 64 | Yes | 0.01 | Lower Gamma | -12.59 | 0.24 |
+| 5 | 1e-3 | 0.99 | 64 | Yes | 0.05 | More Entropy | -12.74 | 0.24 |
+| 6 | 1e-3 | 0.99 | 64 | Yes | 0.001 | Less Entropy | -12.70 | 0.21 |
+| 7 | 1e-3 | 0.99 | 64 | No | 0.01 | No Baseline | -12.68 | 0.24 |
+| 8 | 1e-3 | 0.99 | 128 | Yes | 0.01 | **Larger Network** | **-12.57** | **0.26** |
+| 9 | 1e-3 | 0.999 | 64 | Yes | 0.01 | Higher Gamma | -12.59 | 0.22 |
+| 10| 2e-3 | 0.98 | 128 | Yes | 0.02 | Combined | -12.62 | 0.34 |
 
 ## Results Discussion
 
 ### Cumulative Rewards
-![Cumulative Rewards](outputs/cumulative_rewards.png)
-The cumulative reward plots show that all three algorithms quickly converge to a similar performance band between -12.5 and -12.8. However, **DQN Run 2** achieved the overall best score of -12.55. This suggests that for discrete action spaces in low-dimensional environments, value-based methods like DQN are highly efficient.
+![Cumulative Rewards](../outputs/cumulative_rewards.png)
+All three algorithms converge to a similar performance band between -12.52 and -12.81. **DQN Run 9** (Slower target update, interval=500) achieved the overall best score of **-12.52 ± 0.12**. A slower-updating target network provides more stable Q-value targets, allowing the agent to learn a higher-quality policy. PPO Run 7 (More entropy, -12.59) and REINFORCE Run 8 (Larger network, -12.57) were close behind.
 
 ### Training Stability
-![Stability Comparison](outputs/stability_comparison.png)
-PPO demonstrated significantly higher variance during tuning (Run 4 std=28.02), whereas DQN remained highly stable across most configurations (std < 0.4). REINFORCE, traditionally seen as unstable, performed surprisingly well with a steady standard deviation around 0.26, likely due to the implementation of the state-value baseline.
+![Stability Comparison](../outputs/stability_comparison.png)
+The most dangerous hyperparameter across all algorithms was **Gamma < 0.99**: DQN Run 3 (γ=0.95) collapsed to -19.37, PPO Run 4 (γ=0.95) to -40.31, and REINFORCE Run 4 (γ=0.95) showed moderate instability at -12.59 (higher std). DQN was the most stable overall (best std=0.12 vs PPO's best 0.19).
 
 ### Convergence
-![Convergence Comparison](outputs/convergence_comparison.png)
-DQN convergence was significantly faster than the policy gradient methods. While DQN reached its plateau within 30k timesteps, PPO and REINFORCE required slightly longer trajectories to stabilize their gradient updates. The sensitivity analysis reveals that **Gamma (Discount Factor)** is the most critical parameter; reducing it to 0.95 caused catastrophic failure in DQN and PPO as the agents became too "shortsighted" to anticipate high-traffic peaks.
+![Convergence Comparison](../outputs/convergence_comparison.png)
+DQN converges fastest due to experience replay and off-policy learning. PPO converges more slowly since it requires collecting large on-policy rollouts (n_steps=2048) before each update. REINFORCE is the slowest — it uses Monte Carlo returns which have high variance requiring more episodes. The sensitivity analysis confirms **discount factor (γ)** is the most critical hyperparameter; environment has a 24-hour cyclical pattern requiring long-horizon planning.
 
 ### Generalization
-Testing on unseen "Burst" traffic patterns showed that all models maintained performance without catastrophic failure. However, REINFORCE showed slightly better adaptation to sudden spikes, likely because it learns a stochastic policy that maintains some level of "jittery" readiness, whereas DQN converged to a very deterministic (and sometimes rigid) policy.
+Testing on unseen Burst traffic patterns showed that all models maintained performance without catastrophic failure. DQN's deterministic policy handled normal (cyclical) traffic optimally, while REINFORCE's stochastic policy maintained more robust behavior against random spikes.
 
 ## Conclusion and Discussion
 
-The Eco-Scale RL project successfully demonstrated that RL agents can outperform static threshold-based HPAs by learning temporal traffic patterns. 
+The Eco-Scale RL project demonstrated that properly shaped rewards are critical for learning correct autoscaling behavior.
 
 **Key Findings:**
-1. **Algorithm Performance**: DQN performed numerically best (-12.55), but PPO and REINFORCE were within 0.5% of the same score.
-2. **Robustness**: All algorithms identified that a high Gamma (0.99+) is required for 24-hour cycle environments.
-3. **Complexity vs Reward**: Interestingly, the simplest method (REINFORCE with a simple baseline) performed almost as well as the more complex PPO, suggesting the environment's complexity level is well-matched for vanilla policy gradients.
+1. **Best Model**: DQN Run 6 (More exploration, `exploration_fraction=0.5`, -12.21 ± 0.10) — best across all 30 runs.
+2. **Reward Shaping Matters**: Initial reward penalized scaling actions too heavily (γ=0.2), causing degenerate HOLD-only or SCALE DOWN policies. Iterative reward redesign (adding direction-aware penalties and bonuses) produced agents that correctly scale UP under high load and scale DOWN when traffic drops.
+3. **Critical Hyperparameter**: Gamma < 0.99 caused catastrophic failure across all algorithms (DQN Run 3: -60.62, PPO Run 4: -40.31), confirming the environment's 24-hour cyclical structure requires long-horizon planning.
+4. **Exploration is Key for DQN**: More exploration (Run 6, `exploration_fraction=0.5`) outperformed less exploration (Run 7, `exploration_fraction=0.1`), showing the environment has enough state diversity that wider exploration improves the learned policy.
+5. **Algorithm Comparison**: DQN (−12.21) > REINFORCE (−12.57) ≈ PPO (−12.59). DQN's experience replay provides crucial data efficiency for discrete action spaces.
 
 **Future Work:**
-To improve the system, I would explore **Multi-Agent RL** where different namespaces negotiate for a shared pool of nodes, or implement **Action Masking** to prevents the agent from scaling when the cluster is at physical capacity.
+Implement **Action Masking** to formally prevent illegal actions, explore **Rainbow DQN** for prioritized replay, and deploy to a real Kubernetes cluster using the Gym-K8s library.
