@@ -1,6 +1,6 @@
 # Reinforcement Learning Summative Assignment Report
 
-**Student Name:** [Your Name]
+**Student Name:** Jean de Dieu Muhirwa Harerimana
 **Video Recording:** [Link to your Video 3 minutes max]
 **GitHub Repository:** [Link to your repository]
 
@@ -29,15 +29,13 @@ The environment provides a 4-dimensional continuous observation vector, normaliz
 4. **Time of Day (Normalized 0.0 - 1.0)**: Current hour (0-23) / 23.
 
 ### Reward Structure
-The reward function is multi-objective, balancing four competing factors:
-$$R = -(\alpha \cdot L) - (\beta \cdot W) - (\gamma \cdot C) + (\delta \cdot \Delta L) + P_{dir} + B_{dir}$$
+The reward function is multi-objective, balancing three competing priorities:
+$$R = -(\alpha \cdot L) - (\beta \cdot W) - (\gamma \cdot C) + (\delta \cdot \Delta L)$$
 - **$\alpha \cdot L$ (Latency Penalty)**: Weighted at 0.5. Penalizes high request queues.
 - **$\beta \cdot W$ (Wasted Pods Penalty)**: Weighted at 0.3. Penalizes over-provisioned pods.
-- **$\gamma \cdot C$ (Scaling Cost)**: Weighted at **0.05** (reduced). Small churn penalty.
-- **$\delta \cdot \Delta L$ (Improvement Bonus)**: +0.2 when latency decreases step-over-step.
-- **$P_{dir}$ (Wrong-direction penalty)**: -0.5 if agent scales DOWN when latency > 0.5.
-- **$B_{dir}$ (Right-direction bonus)**: +0.3 if agent scales UP when latency > 0.5.
-- **Termination Penalty**: -10.0 if latency ≥ 1.0 for 3 consecutive steps.
+- **$\gamma \cdot C$ (Scaling Cost Penalty)**: Weighted at **0.05** (reduced from 0.2). Penalizes frequent scaling actions.
+- **$\delta \cdot \Delta L$ (Improvement Bonus)**: Weighted at **+0.3**. Rewards the agent when latency goes DOWN step-over-step.
+- **Termination Penalty**: A penalty of -10.0 is applied if the agent allows the queue to breach safe limits for 3 consecutive steps.
 
 ## System Analysis And Design
 
@@ -64,16 +62,16 @@ The DQN agent utilizes a Value-Based approach. Our implementation includes:
 ### DQN Hyperparameter Tuning
 | Run | LR | Gamma | Buffer | Batch | Exploration | Target Update | Notes | Mean Reward | Std Reward |
 |-----|----|-------|--------|-------|-------------|---------------|-------|-------------|------------|
-| 1 | 1e-4 | 0.99 | 10000 | 64 | 0.3 | 100 | Baseline | -61.27 | 0.72 |
-| 2 | 1e-3 | 0.99 | 10000 | 64 | 0.3 | 100 | Higher LR | -12.55 | 0.25 |
-| 3 | 1e-4 | 0.95 | 10000 | 64 | 0.3 | 100 | Lower Gamma | -60.62 | 1.02 |
-| 4 | 1e-4 | 0.99 | 50000 | 64 | 0.3 | 100 | Larger Buffer | -12.34 | 0.25 |
-| 5 | 1e-4 | 0.99 | 10000 | 128 | 0.3 | 100 | Larger Batch | -12.38 | 0.29 |
-| 6 | 1e-4 | 0.99 | 10000 | 64 | **0.5** | 100 | **More Exploration** | **-12.21** | **0.10** |
-| 7 | 1e-4 | 0.99 | 10000 | 64 | 0.1 | 100 | Less Exploration | -12.39 | 0.37 |
-| 8 | 1e-4 | 0.99 | 10000 | 64 | 0.3 | 100 | Lower Final ε | -12.82 | 2.06 |
-| 9 | 1e-4 | 0.99 | 10000 | 64 | 0.3 | 500 | Slower Target | -56.07 | 0.38 |
-| 10 | 5e-5 | 0.999 | 20000 | 32 | 0.4 | 200 | Combined | -15.70 | 0.72 |
+| 1 | 1e-4 | 0.99 | 10000 | 64 | 0.3 | 100 | Baseline | -12.64 | 0.20 |
+| 2 | 1e-3 | 0.99 | 10000 | 64 | 0.3 | 100 | Higher LR | -12.53 | 0.15 |
+| 3 | 1e-4 | 0.95 | 10000 | 64 | 0.3 | 100 | Lower Gamma | -19.37 | 19.07 |
+| 4 | 1e-4 | 0.99 | 50000 | 64 | 0.3 | 100 | Larger Buffer | -12.62 | 0.30 |
+| 5 | 1e-4 | 0.99 | 10000 | 128 | 0.3 | 100 | Larger Batch | -12.59 | 0.15 |
+| 6 | 1e-4 | 0.99 | 10000 | 64 | 0.5 | 100 | More Exploration | -12.65 | 0.23 |
+| 7 | 1e-4 | 0.99 | 10000 | 64 | 0.1 | 100 | Less Exploration | -12.58 | 0.14 |
+| 8 | 1e-4 | 0.99 | 10000 | 64 | 0.3 | 100 | Lower Final ε | -12.60 | 0.21 |
+| 9 | 1e-4 | 0.99 | 10000 | 64 | 0.3 | 500 | **Slower Target** | **-12.52** | **0.12** |
+| 10 | 5e-5 | 0.999 | 20000 | 32 | 0.4 | 200 | Combined | -42.28 | 24.51 |
 
 ### PPO Hyperparameter Tuning
 | Run | LR | Gamma | n_steps | Batch | n_epochs | ent_coef | clip_range | Notes | Mean Reward | Std Reward |
@@ -122,14 +120,13 @@ Testing on unseen Burst traffic patterns showed that all models maintained perfo
 
 ## Conclusion and Discussion
 
-The Eco-Scale RL project demonstrated that properly shaped rewards are critical for learning correct autoscaling behavior.
+The Eco-Scale RL project demonstrated that RL agents can learn meaningful autoscaling policies in a simulated Kubernetes environment.
 
 **Key Findings:**
-1. **Best Model**: DQN Run 6 (More exploration, `exploration_fraction=0.5`, -12.21 ± 0.10) — best across all 30 runs.
-2. **Reward Shaping Matters**: Initial reward penalized scaling actions too heavily (γ=0.2), causing degenerate HOLD-only or SCALE DOWN policies. Iterative reward redesign (adding direction-aware penalties and bonuses) produced agents that correctly scale UP under high load and scale DOWN when traffic drops.
-3. **Critical Hyperparameter**: Gamma < 0.99 caused catastrophic failure across all algorithms (DQN Run 3: -60.62, PPO Run 4: -40.31), confirming the environment's 24-hour cyclical structure requires long-horizon planning.
-4. **Exploration is Key for DQN**: More exploration (Run 6, `exploration_fraction=0.5`) outperformed less exploration (Run 7, `exploration_fraction=0.1`), showing the environment has enough state diversity that wider exploration improves the learned policy.
-5. **Algorithm Comparison**: DQN (−12.21) > REINFORCE (−12.57) ≈ PPO (−12.59). DQN's experience replay provides crucial data efficiency for discrete action spaces.
+1. **Best Model**: DQN Run 9 (Slower target update, -12.52 ± 0.12) — the most stable and best-performing agent across all 30 runs.
+2. **Critical Hyperparameter**: Gamma. All algorithms failed when γ < 0.99, confirming the environment requires long-horizon reasoning.
+3. **Reward Design**: The original reward over-penalized scaling actions (γ=0.2), causing degenerate HOLD-only policies. Reducing it to 0.05 and adding a latency-improvement bonus (+0.3) produced more realistic behavior.
+4. **Algorithm Comparison**: DQN > REINFORCE ≈ PPO for this environment. DQN's experience replay gives it a key advantage in data efficiency for discrete action spaces.
 
 **Future Work:**
-Implement **Action Masking** to formally prevent illegal actions, explore **Rainbow DQN** for prioritized replay, and deploy to a real Kubernetes cluster using the Gym-K8s library.
+Implement **Action Masking** to prevent illegal actions (e.g. scaling when at max pods), explore **Dueling DQN** for improved value estimation, and test in a real Kubernetes environment via the Gym-K8s library.

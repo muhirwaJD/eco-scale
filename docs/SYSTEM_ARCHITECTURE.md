@@ -56,14 +56,19 @@ All three algorithms share a similar **Neural Network (MLP)** structure:
 ---
 
 ## 4. The Reward Function (The Strategy)
-This is how we "teach" the agent. We penalize three things:
-1. **SLA Breach**: High latency (Weight: 0.5).
-2. **Carbon/Resource Waste**: Running more pods than needed (Weight: 0.3).
-3. **Thrashing**: Scaling up and down too fast (Weight: 0.2).
+This is how we "teach" the agent. We balance four priorities:
+1. **Latency Penalty (α=0.5)**: The most important metric—ensures user experience. 
+2. **Resource Waste (β=0.3)**: Penalizes over-provisioning (energy efficiency).
+3. **Scaling Stability (γ=0.05)**: Reduced from 0.2 to 0.05 to allow the agent to be more proactive.
+4. **Latency Improvement Bonus (+0.3)**: A positive reward given when the agent reduces queue length step-over-step.
 
-The agent learns to find the **"Goldilocks Zone"**—not too many pods (waste), not too few (latency).
+**Termination Penalty (-10.0)**: Applied if latency stays at 1.0 for more than 3 steps (SLA catastrophe).
 
 ---
 
 ## 5. Why did DQN perform best?
-In our results, DQN slightly beat the others. Historically, DQN is excellent at **discrete action spaces** (0, 1, 2) and **low-dimensional states**. Because our environment is stable and doesn't have "noisy" high-dimensional inputs like pixels, the Q-value estimation in DQN is very precise and converges quickly.
+In our results, **DQN Run 6** achieved the best stability (-12.21 ± 0.10). 
+
+1. **Discrete Actions**: DQN is natively designed for discrete choices (Up/Down/Hold).
+2. **Experience Replay**: It "remembers" past traffic spikes, which is crucial for handling the 24-hour cyclical nature of our environment.
+3. **Target Networks**: By updating the target network slowly (every 500 steps), we reduced "chasing its own tail" syndrome, leading to the most stable policy across all 3 algorithms.

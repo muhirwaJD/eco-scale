@@ -1,9 +1,6 @@
 """
 main.py — Run the best trained DQN agent with pygame visualization.
 
-Best model: DQN Run 6 (More exploration, exploration_fraction=0.5)
-Mean reward: -12.21 ± 0.10 (best across all 30 hyperparameter runs)
-
 Usage:
     python3 main.py
 """
