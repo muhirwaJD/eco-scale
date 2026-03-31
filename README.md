@@ -65,7 +65,7 @@ eco-scale/
 
 | Algorithm | Best Mean Reward | Top Configuration |
 |-----------|------------------|-------------------|
-| **DQN**   | **-12.52**       | Slower Target Update |
+| **DQN**   | **-12.21**       | More exploration |
 | REINFORCE | -12.57           | Larger Network (128) |
 | PPO       | -12.59           | Higher Entropy Coeff |
 
