@@ -86,10 +86,9 @@ class KubernetesEnv(gym.Env):
         reward = self._calculate_reward(action)
         self.episode_reward += reward
 
-        # 5. termination / truncation
-        terminated = self._check_termination()
-        if terminated:
-            reward -= 10.0
+        # 5. no hard termination — saturation is handled via the reward penalty.
+        #    episodes end only when the fixed-length trace is exhausted.
+        terminated = False
         truncated = self.current_step >= self.max_steps
 
         return self._get_obs(), reward, terminated, truncated, self._info()
@@ -117,6 +116,9 @@ class KubernetesEnv(gym.Env):
         wrong_dir = -0.5 if (action == 0 and self.latency > 0.5) else 0.0
         right_dir = 0.3 if (action == 2 and self.latency > 0.5) else 0.0
 
+        # extra sting for near-saturated latency (replaces the old termination penalty)
+        saturation = -1.0 if self.latency >= 1.0 else 0.0
+
         return (
             -(self.ALPHA * self.latency)
             - (self.BETA * wasted)
@@ -124,6 +126,7 @@ class KubernetesEnv(gym.Env):
             + (self.IMPROVE_BONUS * improvement)
             + wrong_dir
             + right_dir
+            + saturation
         )
 
     def _check_termination(self):
