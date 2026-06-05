@@ -14,13 +14,31 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.gridspec import GridSpec
 
-OUTPUT_DIR = "/home/muhirwa/alu/eco-scale/outputs"
+OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "outputs")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # ── Load all CSVs ──────────────────────────────────────────────────
-dqn = pd.read_csv(f"{OUTPUT_DIR}/dqn_results.csv")
-ppo = pd.read_csv(f"{OUTPUT_DIR}/ppo_results.csv")
-rf  = pd.read_csv(f"{OUTPUT_DIR}/reinforce_results.csv")
+# This script compares all three algorithms, so it needs all three result
+# CSVs. If any is missing (e.g. only dqn_results.csv was regenerated on the
+# new real-trace env), fail with a clear message instead of a raw traceback.
+_required = {
+    "dqn": f"{OUTPUT_DIR}/dqn_results.csv",
+    "ppo": f"{OUTPUT_DIR}/ppo_results.csv",
+    "reinforce": f"{OUTPUT_DIR}/reinforce_results.csv",
+}
+_missing = {name: path for name, path in _required.items() if not os.path.exists(path)}
+if _missing:
+    raise SystemExit(
+        "generate_plots.py needs all three result CSVs (it builds cross-algorithm "
+        "comparison figures). Missing:\n  "
+        + "\n  ".join(f"{name}: {path}" for name, path in _missing.items())
+        + "\n\nRun the corresponding training script(s) first, or use "
+          "training/select_champion.py for a DQN-only mean-reward figure."
+    )
+
+dqn = pd.read_csv(_required["dqn"])
+ppo = pd.read_csv(_required["ppo"])
+rf  = pd.read_csv(_required["reinforce"])
 
 ALGO_COLORS = {
     "DQN":       "#2196F3",

@@ -65,8 +65,10 @@ CONFIGS = [
          notes="Combined changes"),
 ]
 
-TOTAL_TIMESTEPS = 100_000
+TOTAL_TIMESTEPS = 150_000          # matches proposal commitment (was 100k)
 EVAL_EPISODES = 10
+TRACE_TYPE = "cyclical"            # which real Alibaba trace to train on
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")  # holds trace_*.npy
 MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "models", "dqn")
 LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "logs", "dqn")
 RESULTS_PATH = os.path.join(os.path.dirname(__file__), "..", "outputs", "dqn_results.csv")
@@ -102,8 +104,8 @@ def main():
         print(f"  Config: {cfg}")
         print(f"{'='*60}\n")
 
-        env = KubernetesEnv(trace_type="cyclical")
-        eval_env = KubernetesEnv(trace_type="cyclical")
+        env = KubernetesEnv(trace_type=TRACE_TYPE, trace_dir=DATA_DIR)
+        eval_env = KubernetesEnv(trace_type=TRACE_TYPE, trace_dir=DATA_DIR)
 
         run_log = os.path.join(LOG_DIR, f"run_{i}")
         eval_cb = EvalCallback(

@@ -1,0 +1,19 @@
+{
+  "champion_run": 4,
+  "notes": "Larger buffer",
+  "mean_reward": -83.66,
+  "std_reward": 0.0,
+  "hyperparameters": {
+    "learning_rate": 0.0001,
+    "gamma": 0.99,
+    "buffer_size": 50000,
+    "batch_size": 64,
+    "exploration_fraction": 0,
+    "exploration_final_eps": 0,
+    "target_update_interval": 100
+  },
+  "trace": "cyclical (real Alibaba 2018)",
+  "source_model": "models/dqn/eco_scale_dqn_run_4.zip",
+  "selected_at": "2026-06-04T17:11:32",
+  "reward_scale_note": "Trained on real Alibaba traces with the rewritten reward (fixed-length 288-step episodes, no termination). Scale is NOT comparable to the summative synthetic-env figure of -12.21. Random-agent reference on these traces: -315 to -127."
+}
