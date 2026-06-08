@@ -1,0 +1,11 @@
+{
+  "deployed_agent": "PPO",
+  "champion_run": 6,
+  "notes": "Larger batch",
+  "train_mean_reward": -340.07,
+  "train_std_reward": 10.24,
+  "selected_on": "training reward (10-run sweep); validated on held-out test traces",
+  "source_model": "models/pg/eco_scale_ppo_run_6.zip",
+  "selected_at": "2026-06-08T20:00:05",
+  "note": "PPO selected as deployed agent after empirical evaluation (proposal allowed final selection to be validated empirically). DQN remains the proposal-named primary; PPO beat the HPA baseline most cleanly on held-out test traces."
+}
