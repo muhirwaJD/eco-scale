@@ -166,19 +166,24 @@ class KubernetesEnv(gym.Env):
 
 if __name__ == "__main__":
     # --- calibration: confirm baseline is servable and peaks stress the system ---
-    for tt in ["cyclical", "burst"]:
-        env = KubernetesEnv(trace_type=tt)
+    import glob
+    trace_files = sorted(glob.glob(os.path.join(os.path.dirname(__file__),
+                                                 "..", "data", "traces", "trace_*.npy")))
+    if not trace_files:
+        raise SystemExit("No traces found in data/traces/ — run data/make_split.py first.")
+
+    for tp in trace_files[:3]:                      # sample a few of the real traces
+        env = KubernetesEnv(trace_paths=[tp])
         lo, hi = float(env.trace.min()), float(env.trace.max())
 
-        # latency at START_PODS for baseline vs peak load (no scaling)
         cap = env.START_PODS * env.POD_CAPACITY
-        lat_lo = min(lo / cap, 1.0)
-        lat_hi = min(hi / cap, 1.0)
-        print(f"[{tt}] cpu {lo:.2f}-{hi:.2f} | "
+        lat_lo, lat_hi = min(lo / cap, 1.0), min(hi / cap, 1.0)
+        print(f"[{os.path.basename(tp)}] cpu {lo:.2f}-{hi:.2f} | "
               f"latency@start pods: baseline {lat_lo:.2f}, peak {lat_hi:.2f} "
-              f"| required pods: {int(np.ceil(lo/env.POD_CAPACITY))}-{int(np.ceil(hi/env.POD_CAPACITY))}")
+              f"| required pods (healthy): "
+              f"{int(np.ceil(lo/(env.UTIL_TARGET*env.POD_CAPACITY)))}-"
+              f"{int(np.ceil(hi/(env.UTIL_TARGET*env.POD_CAPACITY)))}")
 
-        # random-agent rollout
         env.reset()
         total, term, info = 0.0, False, {}
         for _ in range(env.max_steps):
