@@ -1,0 +1,11 @@
+Run,learning_rate,gamma,entropy_coef,use_baseline,hidden,Mean Reward,Std Reward,Notes
+1,0.001,0.99,0.01,True,64,-355.69,10.69,Baseline
+2,0.003,0.99,0.01,True,64,-356.56,12.16,Higher LR
+3,0.0005,0.99,0.01,True,64,-369.45,9.35,Lower LR
+4,0.001,0.95,0.01,True,64,-350.05,9.46,Lower gamma
+5,0.001,0.99,0.05,True,64,-355.95,11.56,More entropy
+6,0.001,0.99,0.001,True,64,-352.72,8.47,Less entropy
+7,0.001,0.99,0.01,False,64,-402.61,5.33,No baseline
+8,0.001,0.99,0.01,True,128,-348.91,12.02,Larger network
+9,0.001,0.999,0.01,True,64,-360.71,10.02,Higher gamma
+10,0.002,0.98,0.02,True,128,-351.18,8.92,Combined changes

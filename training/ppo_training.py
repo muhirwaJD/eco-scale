@@ -7,6 +7,7 @@ Usage:
 
 import os
 import sys
+import json
 import numpy as np
 import pandas as pd
 
@@ -53,8 +54,14 @@ CONFIGS = [
          n_epochs=5, ent_coef=0.02, clip_range=0.25, notes="Combined changes"),
 ]
 
-TOTAL_TIMESTEPS = 100_000
-EVAL_EPISODES = 10
+TOTAL_TIMESTEPS = 150_000          # match DQN / proposal commitment
+EVAL_EPISODES = 20                 # multi-trace eval -> real variance
+ROOT = os.path.join(os.path.dirname(__file__), "..")
+
+# Train on the 8-trace train split (same split as DQN; test traces held out).
+with open(os.path.join(ROOT, "data", "split.json")) as _f:
+    TRAIN_PATHS = [os.path.join(ROOT, p) for p in json.load(_f)["train"]]
+
 MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "models", "pg")
 LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "logs", "ppo")
 RESULTS_PATH = os.path.join(os.path.dirname(__file__), "..", "outputs", "ppo_results.csv")
@@ -90,8 +97,8 @@ def main():
         print(f"  Config: {cfg}")
         print(f"{'='*60}\n")
 
-        env = make_vec_env(lambda: KubernetesEnv(trace_type="cyclical"), n_envs=4)
-        eval_env = KubernetesEnv(trace_type="cyclical")
+        env = make_vec_env(lambda: KubernetesEnv(trace_paths=TRAIN_PATHS), n_envs=4)
+        eval_env = KubernetesEnv(trace_paths=TRAIN_PATHS)
 
         run_log = os.path.join(LOG_DIR, f"run_{i}")
         eval_cb = EvalCallback(

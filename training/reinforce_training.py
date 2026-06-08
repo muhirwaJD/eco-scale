@@ -14,6 +14,7 @@ Usage:
 
 import os
 import sys
+import json
 import numpy as np
 import pandas as pd
 import torch
@@ -24,6 +25,12 @@ from torch.distributions import Categorical
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from environment.custom_env import KubernetesEnv
+
+ROOT = os.path.join(os.path.dirname(__file__), "..")
+
+# Train on the 8-trace train split (same split as DQN/PPO; test traces held out).
+with open(os.path.join(ROOT, "data", "split.json")) as _f:
+    TRAIN_PATHS = [os.path.join(ROOT, p) for p in json.load(_f)["train"]]
 
 # ──────────────────────────────────────────────
 # Policy Network
@@ -174,10 +181,14 @@ class REINFORCE:
 # Training loop
 # ──────────────────────────────────────────────
 
-def train_reinforce(config, run_id, total_episodes=350, eval_episodes=10):
-    """Train a single REINFORCE agent and return evaluation results."""
-    env = KubernetesEnv(trace_type="cyclical")
-    eval_env = KubernetesEnv(trace_type="cyclical")
+def train_reinforce(config, run_id, total_episodes=520, eval_episodes=20):
+    """Train a single REINFORCE agent and return evaluation results.
+
+    total_episodes=520 ~= 150k env steps (288/episode), matching DQN/PPO.
+    Multi-trace: each episode samples a random train trace -> generalization.
+    """
+    env = KubernetesEnv(trace_paths=TRAIN_PATHS)
+    eval_env = KubernetesEnv(trace_paths=TRAIN_PATHS)
 
     agent = REINFORCE(
         obs_dim=4,
