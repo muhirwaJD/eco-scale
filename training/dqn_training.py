@@ -66,9 +66,14 @@ CONFIGS = [
 ]
 
 TOTAL_TIMESTEPS = 150_000          # matches proposal commitment (was 100k)
-EVAL_EPISODES = 10
-TRACE_TYPE = "cyclical"            # which real Alibaba trace to train on
-DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")  # holds trace_*.npy
+EVAL_EPISODES = 20                 # multi-trace eval -> real variance (was 10, std=0)
+ROOT = os.path.join(os.path.dirname(__file__), "..")
+
+# Train on the 8-trace train split (multi-trace mode samples one trace/episode).
+# The 5 held-out test traces are used later for the DQN-vs-HPA comparison only.
+with open(os.path.join(ROOT, "data", "split.json")) as _f:
+    TRAIN_PATHS = [os.path.join(ROOT, p) for p in json.load(_f)["train"]]
+
 MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "models", "dqn")
 LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "logs", "dqn")
 RESULTS_PATH = os.path.join(os.path.dirname(__file__), "..", "outputs", "dqn_results.csv")
@@ -104,8 +109,8 @@ def main():
         print(f"  Config: {cfg}")
         print(f"{'='*60}\n")
 
-        env = KubernetesEnv(trace_type=TRACE_TYPE, trace_dir=DATA_DIR)
-        eval_env = KubernetesEnv(trace_type=TRACE_TYPE, trace_dir=DATA_DIR)
+        env = KubernetesEnv(trace_paths=TRAIN_PATHS)
+        eval_env = KubernetesEnv(trace_paths=TRAIN_PATHS)
 
         run_log = os.path.join(LOG_DIR, f"run_{i}")
         eval_cb = EvalCallback(

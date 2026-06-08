@@ -31,15 +31,26 @@ class KubernetesEnv(gym.Env):
     GAMMA_R = 0.05           # scaling-action cost
     IMPROVE_BONUS = 0.2      # reward for reducing latency vs previous step
 
-    def __init__(self, trace_type="cyclical", render_mode=None, trace_dir=None):
+    def __init__(self, trace_type="cyclical", render_mode=None, trace_dir=None,
+                 trace_paths=None):
         super().__init__()
         self.trace_type = trace_type
         self.render_mode = render_mode
 
-        # load the real trace
-        trace_dir = trace_dir or os.environ.get("TRACE_DIR", ".")
-        fname = "trace_burst.npy" if trace_type == "burst" else "trace_cyclical.npy"
-        self.trace = np.load(os.path.join(trace_dir, fname)).astype(np.float32)
+        # --- load one or many real traces ---
+        # Multi-trace mode (trace_paths given): a random trace is sampled each
+        # episode so the agent trains across diverse traffic patterns.
+        # Single-trace mode (default): backward-compatible trace_type lookup.
+        if trace_paths:
+            paths = list(trace_paths)
+        else:
+            trace_dir = trace_dir or os.environ.get("TRACE_DIR", ".")
+            fname = "trace_burst.npy" if trace_type == "burst" else "trace_cyclical.npy"
+            paths = [os.path.join(trace_dir, fname)]
+
+        self.trace_paths = paths
+        self.traces = [np.load(p).astype(np.float32) for p in paths]
+        self.trace = self.traces[0]          # active trace; reset() picks one per episode
         self.max_steps = len(self.trace)
 
         self.observation_space = gym.spaces.Box(
@@ -61,6 +72,12 @@ class KubernetesEnv(gym.Env):
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
+        # pick the active trace for this episode (random across the pool).
+        # single-trace envs (len == 1) stay fully deterministic.
+        if len(self.traces) > 1:
+            i = int(self.np_random.integers(len(self.traces)))
+            self.trace = self.traces[i]
+            self.max_steps = len(self.trace)
         self._init_state()
         return self._get_obs(), {}
 

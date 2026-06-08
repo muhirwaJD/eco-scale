@@ -54,13 +54,15 @@ def main():
                       "exploration_fraction", "exploration_final_eps",
                       "target_update_interval"]
         },
-        "trace": "cyclical (real Alibaba 2018)",
+        "trace": "8-trace train split (real Alibaba 2018, multi-trace sampling)",
+        "eval": "mean over EVAL_EPISODES sampled across the 8 train traces (variance > 0)",
         "source_model": os.path.relpath(src, ROOT),
         "selected_at": datetime.datetime.now().isoformat(timespec="seconds"),
         "reward_scale_note": (
-            "Trained on real Alibaba traces with the rewritten reward (fixed-length "
+            "Trained on the 8-trace train split with the rewritten reward (fixed-length "
             "288-step episodes, no termination). Scale is NOT comparable to the "
-            "summative synthetic-env figure of -12.21. Random-agent reference on "
+            "summative synthetic-env figure of -12.21. Final DQN-vs-HPA comparison is "
+            "done separately on the 5 held-out TEST traces. Random-agent reference on "
             f"these traces: {RANDOM_BASELINE_RANGE[0]:.0f} to {RANDOM_BASELINE_RANGE[1]:.0f}."
         ),
     }

@@ -1,0 +1,19 @@
+{
+  "train": [
+    "data/traces/trace_01.npy",
+    "data/traces/trace_02.npy",
+    "data/traces/trace_03.npy",
+    "data/traces/trace_08.npy",
+    "data/traces/trace_09.npy",
+    "data/traces/trace_10.npy",
+    "data/traces/trace_11.npy",
+    "data/traces/trace_12.npy"
+  ],
+  "test": [
+    "data/traces/trace_00.npy",
+    "data/traces/trace_04.npy",
+    "data/traces/trace_05.npy",
+    "data/traces/trace_06.npy",
+    "data/traces/trace_07.npy"
+  ]
+}
