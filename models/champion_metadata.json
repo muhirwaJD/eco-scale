@@ -1,19 +1,20 @@
 {
-  "champion_run": 4,
-  "notes": "Larger buffer",
-  "mean_reward": -83.66,
-  "std_reward": 0.0,
+  "champion_run": 6,
+  "notes": "More exploration",
+  "mean_reward": -83.65,
+  "std_reward": 2.8,
   "hyperparameters": {
     "learning_rate": 0.0001,
     "gamma": 0.99,
-    "buffer_size": 50000,
+    "buffer_size": 10000,
     "batch_size": 64,
     "exploration_fraction": 0,
     "exploration_final_eps": 0,
     "target_update_interval": 100
   },
-  "trace": "cyclical (real Alibaba 2018)",
-  "source_model": "models/dqn/eco_scale_dqn_run_4.zip",
-  "selected_at": "2026-06-04T17:11:32",
-  "reward_scale_note": "Trained on real Alibaba traces with the rewritten reward (fixed-length 288-step episodes, no termination). Scale is NOT comparable to the summative synthetic-env figure of -12.21. Random-agent reference on these traces: -315 to -127."
+  "trace": "8-trace train split (real Alibaba 2018, multi-trace sampling)",
+  "eval": "mean over EVAL_EPISODES sampled across the 8 train traces (variance > 0)",
+  "source_model": "models/dqn/eco_scale_dqn_run_6.zip",
+  "selected_at": "2026-06-08T15:59:47",
+  "reward_scale_note": "Trained on the 8-trace train split with the rewritten reward (fixed-length 288-step episodes, no termination). Scale is NOT comparable to the summative synthetic-env figure of -12.21. Final DQN-vs-HPA comparison is done separately on the 5 held-out TEST traces. Random-agent reference on these traces: -315 to -127."
 }
