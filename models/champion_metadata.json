@@ -1,8 +1,8 @@
 {
-  "champion_run": 6,
-  "notes": "More exploration",
-  "mean_reward": -83.65,
-  "std_reward": 2.8,
+  "champion_run": 1,
+  "notes": "Baseline",
+  "mean_reward": -344.58,
+  "std_reward": 7.74,
   "hyperparameters": {
     "learning_rate": 0.0001,
     "gamma": 0.99,
@@ -14,7 +14,7 @@
   },
   "trace": "8-trace train split (real Alibaba 2018, multi-trace sampling)",
   "eval": "mean over EVAL_EPISODES sampled across the 8 train traces (variance > 0)",
-  "source_model": "models/dqn/eco_scale_dqn_run_6.zip",
-  "selected_at": "2026-06-08T15:59:47",
-  "reward_scale_note": "Trained on the 8-trace train split with the rewritten reward (fixed-length 288-step episodes, no termination). Scale is NOT comparable to the summative synthetic-env figure of -12.21. Final DQN-vs-HPA comparison is done separately on the 5 held-out TEST traces. Random-agent reference on these traces: -315 to -127."
+  "source_model": "models/dqn/eco_scale_dqn_run_1.zip",
+  "selected_at": "2026-06-08T17:26:40",
+  "reward_scale_note": "Trained on the 8-trace train split with the rewritten reward (fixed-length 288-step episodes, no termination). Scale is NOT comparable to the summative synthetic-env figure of -12.21. Final DQN-vs-HPA comparison is done separately on the 5 held-out TEST traces. Random-agent reference on these traces: -578 to -366."
 }

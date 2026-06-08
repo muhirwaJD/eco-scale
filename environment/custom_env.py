@@ -25,11 +25,15 @@ class KubernetesEnv(gym.Env):
     QUEUE_SCALE = 1000.0     # request_queue normalization for the observation
     BREACH_LIMIT = 5         # consecutive saturated steps before termination
 
-    # reward weights
-    ALPHA = 0.5              # latency penalty
-    BETA = 0.3               # wasted-pod penalty
-    GAMMA_R = 0.05           # scaling-action cost
-    IMPROVE_BONUS = 0.2      # reward for reducing latency vs previous step
+    # reward weights (recalibrated). Energy is charged on the ABSOLUTE pod count
+    # so the optimal policy tracks demand at a healthy utilization instead of
+    # over-provisioning. Validated offline in training/reward_design.py:
+    # demand-tracking beats park-high/park-low/hold under these weights.
+    W_LAT = 1.0             # latency (utilization) penalty — service quality
+    W_ENERGY = 1.5          # energy cost per running pod (absolute)
+    W_SLA = 1.0             # hard penalty for saturation (util >= 1.0)
+    W_SCALE = 0.02          # per scaling-action cost
+    UTIL_TARGET = 0.70      # healthy utilization the "required" pod count targets
 
     def __init__(self, trace_type="cyclical", render_mode=None, trace_dir=None,
                  trace_paths=None):
@@ -119,31 +123,27 @@ class KubernetesEnv(gym.Env):
         ], dtype=np.float32)
 
     def _required_pods(self):
-        return int(np.clip(np.ceil(self.cpu_util / self.POD_CAPACITY),
+        # pods needed to hold utilization at the HEALTHY target (not saturation).
+        # This is the "right-sized" reference; wasted pods are counted above it.
+        return int(np.clip(np.ceil(self.cpu_util / (self.UTIL_TARGET * self.POD_CAPACITY)),
                            self.MIN_PODS, self.MAX_PODS))
 
     def _wasted_pods(self):
         return max(0, self.pod_count - self._required_pods()) / self.MAX_PODS
 
     def _calculate_reward(self, action):
-        wasted = self._wasted_pods()
+        # latency = clipped utilization (1.0 = saturated); already set in step().
         scaling_cost = 1.0 if action != 1 else 0.0
-        improvement = max(0.0, self.prev_latency - self.latency)
+        breach = 1.0 if self.latency >= 1.0 else 0.0
 
-        wrong_dir = -0.5 if (action == 0 and self.latency > 0.5) else 0.0
-        right_dir = 0.3 if (action == 2 and self.latency > 0.5) else 0.0
-
-        # extra sting for near-saturated latency (replaces the old termination penalty)
-        saturation = -1.0 if self.latency >= 1.0 else 0.0
-
+        # Penalize: poor service (latency), energy use (ABSOLUTE pods), SLA
+        # breaches, and churn. Charging energy on absolute pods is what makes
+        # tracking demand optimal instead of parking at MAX_PODS.
         return (
-            -(self.ALPHA * self.latency)
-            - (self.BETA * wasted)
-            - (self.GAMMA_R * scaling_cost)
-            + (self.IMPROVE_BONUS * improvement)
-            + wrong_dir
-            + right_dir
-            + saturation
+            -(self.W_LAT * self.latency)
+            - (self.W_ENERGY * self.pod_count / self.MAX_PODS)
+            - (self.W_SLA * breach)
+            - (self.W_SCALE * scaling_cost)
         )
 
     def _check_termination(self):

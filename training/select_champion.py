@@ -26,8 +26,10 @@ CHAMPION_PATH = os.path.join(ROOT, "models", "eco_scale_dqn_best.zip")
 METADATA_PATH = os.path.join(ROOT, "models", "champion_metadata.json")
 FIGURE_PATH = os.path.join(ROOT, "outputs", "dqn_mean_reward.png")
 
-# Random-agent reference on the real traces (per data-integration note).
-RANDOM_BASELINE_RANGE = (-315.0, -127.0)
+# Reference rewards on the real traces under the recalibrated reward:
+# random agent ~ -473; demand-tracking ("ideal") ~ -347 (the practical ceiling).
+RANDOM_BASELINE_RANGE = (-578.0, -366.0)
+IDEAL_REFERENCE = -347.0
 
 
 def main():
@@ -82,11 +84,14 @@ def main():
                 ha="center", fontsize=10, color="#B8860B", fontweight="bold",
                 arrowprops=dict(arrowstyle="-", color="#B8860B", lw=1.2))
 
-    # random-agent reference band
+    # random-agent reference band (floor) and demand-tracking reference (ceiling)
     ax.axhspan(*RANDOM_BASELINE_RANGE, color="#E57373", alpha=0.12, zorder=0)
     ax.text(df["Run"].max(), np.mean(RANDOM_BASELINE_RANGE),
             "random-agent range", ha="right", va="center",
             fontsize=8, color="#C62828", style="italic")
+    ax.axhline(IDEAL_REFERENCE, color="#2E7D32", linestyle="--", lw=1.2, zorder=1)
+    ax.text(df["Run"].min(), IDEAL_REFERENCE, " demand-tracking ceiling",
+            ha="left", va="bottom", fontsize=8, color="#2E7D32", style="italic")
 
     ax.set_title("DQN on Real Alibaba Traces — Mean Episode Reward per Run",
                  fontsize=14, fontweight="bold")
