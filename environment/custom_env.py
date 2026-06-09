@@ -1,4 +1,5 @@
 import os
+import glob
 import gymnasium as gym
 import numpy as np
 
@@ -7,8 +8,10 @@ class KubernetesEnv(gym.Env):
     """
     Pod-autoscaling environment driven by REAL Alibaba cluster traces.
 
-    Traffic is read from a pre-sliced, [0,1]-normalized CPU trace
-    (trace_cyclical.npy / trace_burst.npy), one value per timestep.
+    Traffic is read from pre-sliced, [0,1]-normalized CPU traces
+    (data/traces/trace_*.npy), one value per timestep. Pass `trace_paths` to
+    train/eval on a specific set; a random trace is sampled each episode when
+    more than one is given.
 
     Observation (4-D, all scaled to [0,1]):
         [ cpu_util, pods/MAX_PODS, queue/QUEUE_SCALE, day_progress ]
@@ -35,25 +38,26 @@ class KubernetesEnv(gym.Env):
     W_SCALE = 0.02          # per scaling-action cost
     UTIL_TARGET = 0.70      # healthy utilization the "required" pod count targets
 
-    def __init__(self, trace_type="cyclical", render_mode=None, trace_dir=None,
-                 trace_paths=None):
+    DEFAULT_TRACE_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "traces")
+
+    def __init__(self, trace_paths=None, render_mode=None, trace_dir=None):
         super().__init__()
-        self.trace_type = trace_type
         self.render_mode = render_mode
 
         # --- load one or many real traces ---
-        # Multi-trace mode (trace_paths given): a random trace is sampled each
-        # episode so the agent trains across diverse traffic patterns.
-        # Single-trace mode (default): backward-compatible trace_type lookup.
-        if trace_paths:
-            paths = list(trace_paths)
-        else:
-            trace_dir = trace_dir or os.environ.get("TRACE_DIR", ".")
-            fname = "trace_burst.npy" if trace_type == "burst" else "trace_cyclical.npy"
-            paths = [os.path.join(trace_dir, fname)]
+        # Explicit: pass trace_paths=[...]. Default: every trace_*.npy in
+        # data/traces/ (or $TRACE_DIR / the trace_dir arg). When more than one
+        # trace is loaded, reset() samples a random one each episode.
+        if not trace_paths:
+            trace_dir = trace_dir or os.environ.get("TRACE_DIR", self.DEFAULT_TRACE_DIR)
+            trace_paths = sorted(glob.glob(os.path.join(trace_dir, "trace_*.npy")))
+            if not trace_paths:
+                raise FileNotFoundError(
+                    f"No traces found in {trace_dir!r}. Pass trace_paths=[...] "
+                    f"or run data/make_split.py to populate data/traces/.")
 
-        self.trace_paths = paths
-        self.traces = [np.load(p).astype(np.float32) for p in paths]
+        self.trace_paths = list(trace_paths)
+        self.traces = [np.load(p).astype(np.float32) for p in self.trace_paths]
         self.trace = self.traces[0]          # active trace; reset() picks one per episode
         self.max_steps = len(self.trace)
 
