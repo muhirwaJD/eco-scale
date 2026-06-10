@@ -1,13 +1,16 @@
 """
-diagnose_champion.py — Behavioral diagnostic for the DQN champion.
+diagnose_champion.py — Behavioral check on the champion agent.
 
-A good reward number is not enough; we check WHAT the agent does. On the
-held-out TEST traces, compare the champion against:
-  - track-ideal : moves toward the healthy-utilization pod count (practical ceiling)
-  - random      : the floor
+A good reward number isn't enough; we check WHAT the agent does. On the held-out
+test traces, we compare the champion against two reference policies:
+  - track-ideal : always moves toward the healthy pod count (the practical best)
+  - random      : random actions (the floor)
 
-Key signal: `mean|pods-required|` should be SMALL (agent tracks demand), and
-`waste` should be at/below track-ideal — not parked high like the old reward.
+The champion is found automatically from the training results (see agents.py),
+so this always reports on whichever agent actually won — nothing is hardcoded.
+
+Key signal: |pods - required| should be small (the agent tracks demand) and
+waste should be low (it isn't just parking lots of idle pods).
 
 Run: python training/diagnose_champion.py
 """
@@ -21,64 +24,115 @@ from collections import Counter
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 sys.path.insert(0, ROOT)
 
-from stable_baselines3 import DQN
 from environment.custom_env import KubernetesEnv
-CHAMPION = os.path.join(ROOT, "models", "eco_scale_dqn_best.zip")
+from agents import find_champion, load_agent
 
 
-def _episode(env, policy):
+def run_one_episode(env, choose_action):
+    """Run a full episode. `choose_action(obs, env)` returns 0/1/2.
+
+    Returns total reward and per-step lists for the metrics we care about.
+    """
     obs, _ = env.reset()
+    pods, required, latency, waste = [], [], [], []
+    actions = Counter()
+    total_reward = 0.0
     done = False
-    pods, req, lats, waste = [], [], [], []
-    acts = Counter()
-    R = 0.0
     while not done:
-        a = policy(obs, env)
-        obs, r, term, trunc, info = env.step(a)
-        done = term or trunc
-        R += r
-        acts[a] += 1
-        pods.append(info["pods"]); req.append(info["required_pods"])
-        lats.append(info["latency"]); waste.append(info["wasted_pods"])
-    return dict(R=R, gap=np.mean(np.abs(np.array(pods) - np.array(req))),
-                lat=np.mean(lats), waste=np.mean(waste), acts=acts)
+        action = choose_action(obs, env)
+        obs, reward, terminated, truncated, info = env.step(action)
+        done = terminated or truncated
+        total_reward += reward
+        actions[action] += 1
+        pods.append(info["pods"])
+        required.append(info["required_pods"])
+        latency.append(info["latency"])
+        waste.append(info["wasted_pods"])
+    pod_gap = np.mean(np.abs(np.array(pods) - np.array(required)))
+    return {
+        "reward": total_reward,
+        "pod_gap": pod_gap,
+        "latency": np.mean(latency),
+        "waste": np.mean(waste),
+        "actions": actions,
+    }
+
+
+def average_over_traces(test_traces, choose_action):
+    """Run a policy on every test trace and average the metrics."""
+    runs = [run_one_episode(KubernetesEnv(trace_paths=[t]), choose_action)
+            for t in test_traces]
+    actions = sum((r["actions"] for r in runs), Counter())
+    return {
+        "reward": np.mean([r["reward"] for r in runs]),
+        "pod_gap": np.mean([r["pod_gap"] for r in runs]),
+        "latency": np.mean([r["latency"] for r in runs]),
+        "waste": np.mean([r["waste"] for r in runs]),
+        "actions": actions,
+    }
 
 
 def main():
+    # held-out test traces (never seen during training)
     split = json.load(open(os.path.join(ROOT, "data", "split.json")))
-    test_paths = [os.path.join(ROOT, p) for p in split["test"]]
-    model = DQN.load(CHAMPION)
+    test_traces = [os.path.join(ROOT, p) for p in split["test"]]
 
-    def dqn_pol(obs, env): return int(model.predict(obs, deterministic=True)[0])
-    def track_pol(obs, env):
-        tgt = env._required_pods()
-        return 2 if tgt > env.pod_count else (0 if tgt < env.pod_count else 1)
-    def rand_pol(obs, env): return env.action_space.sample()
+    # the real champion, found from the training results
+    champion = find_champion()
+    model = load_agent(champion)
+    champion_label = f"{champion.algorithm} champion"
 
-    print(f"Diagnostic on {len(test_paths)} held-out TEST traces\n")
-    print(f"{'policy':14s} {'reward':>9s} {'|pods-req|':>11s} {'latency':>8s} "
+    # the three policies we compare
+    def champion_policy(obs, env):
+        action, _ = model.predict(obs, deterministic=True)
+        return int(action)
+
+    def track_ideal_policy(obs, env):
+        target = env._required_pods()
+        if target > env.pod_count:
+            return 2
+        if target < env.pod_count:
+            return 0
+        return 1
+
+    def random_policy(obs, env):
+        return env.action_space.sample()
+
+    policies = {
+        champion_label: champion_policy,
+        "track-ideal": track_ideal_policy,
+        "random": random_policy,
+    }
+
+    print(f"Diagnostic on {len(test_traces)} held-out TEST traces "
+          f"(champion = {champion.algorithm} run {champion.run})\n")
+    print(f"{'policy':16s} {'reward':>9s} {'|pods-req|':>11s} {'latency':>8s} "
           f"{'waste':>7s}  action mix (down/hold/up)")
-    print("-" * 72)
-    summary = {}
-    for name, pol in [("DQN champion", dqn_pol), ("track-ideal", track_pol), ("random", rand_pol)]:
-        res = [_episode(KubernetesEnv(trace_paths=[p]), pol) for p in test_paths]
-        acts = sum((r["acts"] for r in res), Counter())
-        R = np.mean([r["R"] for r in res]); gap = np.mean([r["gap"] for r in res])
-        summary[name] = dict(R=R, gap=gap)
-        print(f"{name:14s} {R:9.2f} {gap:11.2f} "
-              f"{np.mean([r['lat'] for r in res]):8.2f} "
-              f"{np.mean([r['waste'] for r in res]):7.3f}  "
-              f"{acts.get(0,0)}/{acts.get(1,0)}/{acts.get(2,0)}")
-    print("-" * 72)
+    print("-" * 74)
 
-    d, t, r = summary["DQN champion"], summary["track-ideal"], summary["random"]
-    print(f"\nChampion vs random : {d['R'] - r['R']:+.1f}  (want strongly positive)")
-    print(f"Champion vs ideal  : {d['R'] - t['R']:+.1f}  (0 = matches practical ceiling)")
-    # "tracking" = pod gap far below random AND reward near the ideal ceiling.
-    tracks = d["gap"] < 2.5 and d["R"] >= t["R"] - 10
-    beats_random = d["R"] > r["R"] + 50
-    print("✅ Champion tracks demand (pod gap near ideal, reward at ceiling)." if tracks
-          else f"❌ Champion off-target by {d['gap']:.1f} pods on average.")
+    results = {}
+    for name, policy in policies.items():
+        r = average_over_traces(test_traces, policy)
+        results[name] = r
+        a = r["actions"]
+        print(f"{name:16s} {r['reward']:9.2f} {r['pod_gap']:11.2f} "
+              f"{r['latency']:8.2f} {r['waste']:7.3f}  "
+              f"{a.get(0, 0)}/{a.get(1, 0)}/{a.get(2, 0)}")
+    print("-" * 74)
+
+    champ = results[champion_label]
+    ideal = results["track-ideal"]
+    rand = results["random"]
+    print(f"\nChampion vs random : {champ['reward'] - rand['reward']:+.1f}  "
+          f"(want strongly positive)")
+    print(f"Champion vs ideal  : {champ['reward'] - ideal['reward']:+.1f}  "
+          f"(0 = matches the practical ceiling)")
+
+    tracks_demand = champ["pod_gap"] < 2.5 and champ["reward"] >= ideal["reward"] - 10
+    beats_random = champ["reward"] > rand["reward"] + 50
+    print("✅ Champion tracks demand (pod gap near ideal, reward at ceiling)."
+          if tracks_demand else
+          f"❌ Champion off-target by {champ['pod_gap']:.1f} pods on average.")
     print("✅ Champion clearly beats random." if beats_random
           else "❌ Champion not clearly above random.")
 

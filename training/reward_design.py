@@ -23,9 +23,16 @@ sys.path.insert(0, ROOT)
 
 from environment.custom_env import KubernetesEnv
 
-# Candidate weights to test. These mirror the env's current values; change them
-# here to trial a tweak, then (if it validates) copy into custom_env.py.
-CANDIDATE = dict(W_LAT=1.0, W_ENERGY=1.5, W_SLA=1.0, W_SCALE=0.02, UTIL_TARGET=0.70)
+# Candidate weights to test. They default to the env's CURRENT (deployed) values
+# — read straight from the class, so nothing is hardcoded twice. Override any
+# entry here to trial a tweak, then (if it validates) copy it into custom_env.py.
+CANDIDATE = dict(
+    W_LAT=KubernetesEnv.W_LAT,
+    W_ENERGY=KubernetesEnv.W_ENERGY,
+    W_SLA=KubernetesEnv.W_SLA,
+    W_SCALE=KubernetesEnv.W_SCALE,
+    UTIL_TARGET=KubernetesEnv.UTIL_TARGET,
+)
 
 
 def make_env(trace_path):

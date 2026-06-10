@@ -1,20 +1,20 @@
 {
-  "champion_run": 1,
-  "notes": "Baseline",
-  "mean_reward": -344.58,
-  "std_reward": 7.74,
+  "algorithm": "PPO",
+  "run": 6,
+  "mean_reward": -340.07,
+  "std_reward": 10.24,
+  "notes": "Larger batch",
   "hyperparameters": {
-    "learning_rate": 0.0001,
+    "learning_rate": 0.0003,
     "gamma": 0.99,
-    "buffer_size": 10000,
-    "batch_size": 64,
-    "exploration_fraction": 0,
-    "exploration_final_eps": 0,
-    "target_update_interval": 100
+    "n_steps": 2048,
+    "batch_size": 128,
+    "n_epochs": 10,
+    "ent_coef": 0.01,
+    "clip_range": 0.2
   },
-  "trace": "8-trace train split (real Alibaba 2018, multi-trace sampling)",
-  "eval": "mean over EVAL_EPISODES sampled across the 8 train traces (variance > 0)",
-  "source_model": "models/dqn/eco_scale_dqn_run_1.zip",
-  "selected_at": "2026-06-08T17:26:40",
-  "reward_scale_note": "Trained on the 8-trace train split with the rewritten reward (fixed-length 288-step episodes, no termination). Scale is NOT comparable to the summative synthetic-env figure of -12.21. Final DQN-vs-HPA comparison is done separately on the 5 held-out TEST traces. Random-agent reference on these traces: -578 to -366."
+  "trained_on": "8-trace train split (real Alibaba 2018, multi-trace)",
+  "source_model": "models/pg/eco_scale_ppo_run_6.zip",
+  "selected_at": "2026-06-10T20:08:37",
+  "note": "Champion = best run across all algorithms by sweep mean reward. Reward scale is specific to this env; compare against the HPA baseline and the held-out test results, not the old -12.21 figure."
 }

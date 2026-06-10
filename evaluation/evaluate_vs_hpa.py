@@ -23,9 +23,9 @@ from scipy import stats
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 sys.path.insert(0, ROOT)
 
-from stable_baselines3 import DQN, PPO
 from environment.custom_env import KubernetesEnv
 from baselines.hpa_controller import HPAController
+from agents import find_champion, load_agent
 
 OUTPUT_DIR = os.path.join(ROOT, "outputs")
 N_OFFSETS = 10                       # start-offsets per trace -> 5 x 10 = 50 paired episodes
@@ -33,19 +33,23 @@ RANDOM_REF, IDEAL_REF = -470.0, -346.0
 
 
 # ── controllers (uniform predict interface) ──────────────────────────
-def load_controllers():
-    ctrls = {}
-    dqn = DQN.load(os.path.join(ROOT, "models", "eco_scale_dqn_best.zip"))
-    ctrls["DQN"] = lambda obs: int(dqn.predict(obs, deterministic=True)[0])
+def _sb3_policy(model):
+    """Wrap a trained stable-baselines3 model as a choose_action(obs) function."""
+    def choose(obs):
+        action, _ = model.predict(obs, deterministic=True)
+        return int(action)
+    return choose
 
-    # Best PPO run (for context), if available
-    try:
-        ppo_csv = pd.read_csv(os.path.join(OUTPUT_DIR, "ppo_results.csv"))
-        best = int(ppo_csv.loc[ppo_csv["Mean Reward"].idxmax(), "Run"])
-        ppo = PPO.load(os.path.join(ROOT, "models", "pg", f"eco_scale_ppo_run_{best}.zip"))
-        ctrls["PPO"] = lambda obs: int(ppo.predict(obs, deterministic=True)[0])
-    except Exception as e:
-        print(f"  (PPO skipped: {e})")
+
+def load_controllers():
+    """The RL agents we benchmark (best of each, found from results) + HPA + random."""
+    ctrls = {}
+    for algorithm in ["PPO", "DQN"]:          # PPO = overall champion, DQN = context
+        try:
+            champion = find_champion([algorithm])
+            ctrls[algorithm] = _sb3_policy(load_agent(champion))
+        except FileNotFoundError as e:
+            print(f"  ({algorithm} skipped: {e})")
 
     hpa = HPAController()
     ctrls["HPA"] = ("hpa", hpa)          # special-cased: needs per-episode reset()
@@ -120,7 +124,8 @@ def main():
     pd.DataFrame(rows).to_csv(os.path.join(OUTPUT_DIR, "dqn_vs_hpa_results.csv"), index=False)
 
     # ── paired t-tests vs HPA (same trace+offset episodes are paired) ──
-    # PPO is the deployed/headline agent; DQN reported for context.
+    # The overall champion is the headline; the other RL agent is context.
+    headline_algo = find_champion().algorithm
     h = res["HPA"]["rewards"]
     headline = None
     for name in ["PPO", "DQN"]:
@@ -129,7 +134,7 @@ def main():
         a = res[name]["rewards"]
         t, p = stats.ttest_rel(a, h)
         diff = a.mean() - h.mean()
-        tag = "HEADLINE" if name == "PPO" else "context "
+        tag = "HEADLINE" if name == headline_algo else "context "
         print(f"\n[{tag}] Paired t-test  {name} vs HPA  (n={len(a)} episodes)")
         print(f"  {name} {a.mean():.2f} ± {a.std():.2f}  |  HPA {h.mean():.2f} ± {h.std():.2f}")
         print(f"  mean diff {diff:+.2f}  |  t={t:.3f}  p={p:.4f}")
@@ -138,10 +143,10 @@ def main():
                   f"{'BEATS' if diff>0 else 'WORSE than'} HPA (p<0.05).")
         else:
             print(f"  ➖ {name} ≈ HPA (no significant difference, p≥0.05).")
-        if name == "PPO":
+        if name == headline_algo:
             headline = (name, a, t, p, diff)
 
-    if headline is None:                       # fall back to DQN if PPO absent
+    if headline is None and "DQN" in res:      # fallback if champion absent
         a = res["DQN"]["rewards"]; t, p = stats.ttest_rel(a, h)
         headline = ("DQN", a, t, p, a.mean() - h.mean())
 
