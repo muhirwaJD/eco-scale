@@ -215,3 +215,5 @@ models/dqn/
 models/pg/
 # (models/eco_scale_best.zip and models/champion_metadata.json sit at models/
 #  top-level, so they're tracked automatically — the deployable champion.)
+
+test.py
