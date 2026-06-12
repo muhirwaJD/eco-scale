@@ -1,0 +1,10 @@
+venv/
+.git/
+logs/
+models/dqn/
+models/pg/
+__pycache__/
+*.pyc
+.DS_Store
+notebooks/
+.claude/

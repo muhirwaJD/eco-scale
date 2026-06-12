@@ -1,0 +1,19 @@
+# Eco-Scale — run the API and the dashboard together.
+#   docker compose up --build
+#   API:       http://localhost:8000/docs
+#   Dashboard: http://localhost:8501
+services:
+  api:
+    build: .
+    image: eco-scale
+    ports:
+      - "8000:8000"
+    command: uvicorn serving.api:app --host 0.0.0.0 --port 8000
+
+  dashboard:
+    image: eco-scale          # reuses the image built by `api`
+    ports:
+      - "8501:8501"
+    command: streamlit run serving/dashboard.py --server.port 8501 --server.address 0.0.0.0
+    depends_on:
+      - api
