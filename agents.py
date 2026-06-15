@@ -24,17 +24,17 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 # and how the per-run model file is named. Change these in one place only.
 ALGORITHMS = {
     "DQN": {
-        "results": "outputs/dqn_results.csv",
+        "results": "outputs/training/dqn_results.csv",
         "model_folder": "models/dqn",
         "model_name": "eco_scale_dqn_run_{run}.zip",
     },
     "PPO": {
-        "results": "outputs/ppo_results.csv",
+        "results": "outputs/training/ppo_results.csv",
         "model_folder": "models/pg",
         "model_name": "eco_scale_ppo_run_{run}.zip",
     },
     "REINFORCE": {
-        "results": "outputs/reinforce_results.csv",
+        "results": "outputs/training/reinforce_results.csv",
         "model_folder": "models/pg",
         "model_name": "eco_scale_reinforce_run_{run}.pt",
     },

@@ -290,7 +290,7 @@ CONFIGS = [
 
 
 def main():
-    results_path = os.path.join(os.path.dirname(__file__), "..", "outputs", "reinforce_results.csv")
+    results_path = os.path.join(os.path.dirname(__file__), "..", "outputs", "training", "reinforce_results.csv")
     os.makedirs(os.path.dirname(results_path), exist_ok=True)
 
     results = []

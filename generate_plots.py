@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.gridspec import GridSpec
 
-OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "outputs")
+OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "outputs", "training")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # ── Load all CSVs ──────────────────────────────────────────────────

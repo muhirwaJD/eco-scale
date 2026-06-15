@@ -1,0 +1,21 @@
+# Native Kubernetes HPA — the baseline the RL controller is compared against.
+# Apply this for the HPA run; delete it for the RL-controller run (so only one
+# autoscaler drives the deployment at a time).
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: eco-sample-app
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: eco-sample-app
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60      # scale to keep avg pod CPU ~60% of request

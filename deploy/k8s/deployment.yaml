@@ -1,0 +1,45 @@
+# Sample CPU-bound app that both HPA and the RL controller will autoscale.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eco-sample-app
+  labels:
+    app: eco-sample-app
+spec:
+  replicas: 1                      # starting point; HPA or the RL controller adjusts
+  selector:
+    matchLabels:
+      app: eco-sample-app
+  template:
+    metadata:
+      labels:
+        app: eco-sample-app
+    spec:
+      containers:
+        - name: app
+          image: eco-sample-app:latest
+          imagePullPolicy: IfNotPresent     # use the locally built image (OrbStack)
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: "200m"          # HPA measures CPU% relative to this request
+            limits:
+              cpu: "1000m"         # a saturated pod can use up to ~1 core
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 2
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: eco-sample-app
+spec:
+  selector:
+    app: eco-sample-app
+  ports:
+    - port: 80
+      targetPort: 8000

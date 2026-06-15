@@ -27,7 +27,7 @@ from evaluation.evaluate_vs_hpa import evaluate, _sb3_policy, N_OFFSETS
 from baselines.hpa_controller import HPAController
 from agents import find_champion, load_agent
 
-OUTPUT_DIR = os.path.join(ROOT, "outputs")
+OUTPUT_DIR = os.path.join(ROOT, "outputs", "hpa_comparison")
 HPA_TARGETS = [0.5, 0.6, 0.7, 0.8, 0.9]   # 50% = conservative/safe, 90% = aggressive
 
 
@@ -72,7 +72,7 @@ def main():
     print(f"  breach: {champ['breach']:.1f}% vs {safe['breach']:.1f}% (comparable reliability)")
 
     _plot(champion.algorithm, champ, hpa_runs)
-    print(f"\nSaved: outputs/energy_vs_hpa.csv, outputs/energy_frontier.png")
+    print(f"\nSaved: outputs/hpa_comparison/energy_vs_hpa.csv + energy_frontier.png")
 
 
 def _row(name, m):

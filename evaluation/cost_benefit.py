@@ -97,7 +97,7 @@ def main():
               f"{cost:9.0f}")
     print("-" * 84)
 
-    pd.DataFrame(rows).T.to_csv(os.path.join(ROOT, "outputs", "cost_benefit.csv"))
+    pd.DataFrame(rows).T.to_csv(os.path.join(ROOT, "outputs", "hpa_comparison", "cost_benefit.csv"))
 
     champ_name = f"{champion.algorithm} (champion)"
     champ = rows[champ_name]

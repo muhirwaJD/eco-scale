@@ -27,7 +27,7 @@ from agents import find_champion, ALGORITHMS
 
 CHAMPION_PATH = os.path.join(ROOT, "models", "eco_scale_best.zip")
 METADATA_PATH = os.path.join(ROOT, "models", "champion_metadata.json")
-FIGURE_PATH = os.path.join(ROOT, "outputs", "champion_mean_reward.png")
+FIGURE_PATH = os.path.join(ROOT, "outputs", "training", "champion_mean_reward.png")
 
 # Approximate reference lines for the figure (from the diagnostics, for context).
 RANDOM_FLOOR = -470.0          # a random agent scores around here

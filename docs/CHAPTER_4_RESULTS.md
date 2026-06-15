@@ -5,7 +5,7 @@
 **Data.** All experiments use real CPU-utilization traces from the Alibaba 2018
 cluster trace. The raw series (~95M rows) was resampled to 5-minute steps,
 normalized to [0, 1], and sliced into **13 daily traces of 288 steps each**
-(CPU range 0.165–0.783). Figure `peak_info.png` shows the daily structure and
+(CPU range 0.165–0.783). Figure `outputs/data/peak_info.png` shows the daily structure and
 peaks. The 13 traces were split **8 train / 5 test**, stratified by difficulty
 (number of stressed steps) so both sets span easy-to-hard conditions. The 5 test
 traces are held out and never seen during training.
@@ -50,8 +50,8 @@ is the most stable, DQN is sample-efficient but prone to instability (two
 configurations collapsed to ≈ −489), and REINFORCE has the highest variance (the
 no-baseline run collapsed). All three cluster near the demand-tracking ceiling
 (≈ −346), indicating the recalibrated reward generalizes across algorithms.
-See `convergence_comparison.png`, `stability_comparison.png`,
-`sensitivity_analysis.png`, and `summary_table.png`.
+See `outputs/training/convergence_comparison.png`, `outputs/training/stability_comparison.png`,
+`outputs/training/sensitivity_analysis.png`, and `outputs/training/summary_table.png`.
 
 PPO and DQN are statistically comparable (overlapping error bars); PPO was
 retained as the deployed agent on the strength of its stability and its
@@ -60,7 +60,7 @@ performance against the HPA baseline (§4.5). REINFORCE is clearly last.
 ## 4.3 Champion Selection
 
 The champion is selected automatically as the best run across all algorithms by
-sweep mean reward (`agents.find_champion`) — **PPO, run 6** (`champion_mean_reward.png`).
+sweep mean reward (`agents.find_champion`) — **PPO, run 6** (`outputs/training/champion_mean_reward.png`).
 No model path is hardcoded; the selection is read from the result tables.
 
 ## 4.4 Behavioral Validation — Does the Agent Track Demand?
@@ -104,7 +104,7 @@ matched, significance is assessed with a **paired t-test**.
   over-provisions, ~9 pods, without a service benefit).
 
 PPO outperforms HPA on the combined objective primarily by maintaining **lower
-p95 latency (0.72 vs 0.79) at comparable reliability** (`dqn_vs_hpa_comparison.png`).
+p95 latency (0.72 vs 0.79) at comparable reliability** (`outputs/hpa_comparison/dqn_vs_hpa_comparison.png`).
 This is a service-quality win; it is not, by itself, an energy reduction versus a
 well-tuned HPA (HPA@70% runs fewer pods).
 
@@ -112,7 +112,7 @@ well-tuned HPA (HPA@70% runs fewer pods).
 
 Because HPA uses a single static utilization target, its energy/reliability
 trade-off depends entirely on that target. Sweeping it (`energy_vs_hpa.py`,
-`energy_frontier.png`):
+`outputs/hpa_comparison/energy_frontier.png`):
 
 | Controller | Reward | Mean pods | Waste | Breach % |
 |---|---|---|---|---|

@@ -81,7 +81,11 @@ eco-scale/
 │   ├── eco_scale_ppo_best.zip   # deployed champion (PPO)
 │   ├── eco_scale_dqn_best.zip   # DQN champion (comparison)
 │   └── *_champion_metadata.json
-├── outputs/                     # result CSVs + figures
+├── outputs/                     # results, grouped by phase
+│   ├── data/                    # trace characterization
+│   ├── training/                # sweep results + champion + comparison figures
+│   ├── hpa_comparison/          # RL-vs-HPA, energy, cost-benefit
+│   └── realcluster/             # Stage 2 real-cluster validation
 ├── docs/                        # technical report, system architecture
 ├── generate_plots.py            # cross-algorithm comparison figures
 └── requirements.txt

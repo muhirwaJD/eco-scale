@@ -58,16 +58,16 @@ with tab_live:
 # ── Panel 2: results ────────────────────────────────────────────────
 with tab_results:
     st.subheader("RL vs Kubernetes HPA (held-out test traces)")
-    results_csv = os.path.join(OUTPUTS, "dqn_vs_hpa_results.csv")
+    results_csv = os.path.join(OUTPUTS, "hpa_comparison", "dqn_vs_hpa_results.csv")
     if os.path.exists(results_csv):
-        st.dataframe(pd.read_csv(results_csv), use_container_width=True)
+        st.dataframe(pd.read_csv(results_csv), width="stretch")
 
     for caption, fname in [
-        ("PPO vs HPA — reward / latency / energy", "dqn_vs_hpa_comparison.png"),
-        ("Energy vs reliability frontier", "energy_frontier.png"),
-        ("Champion selection (per-run reward)", "champion_mean_reward.png"),
+        ("PPO vs HPA — reward / latency / energy", "hpa_comparison/dqn_vs_hpa_comparison.png"),
+        ("Energy vs reliability frontier", "hpa_comparison/energy_frontier.png"),
+        ("Champion selection (per-run reward)", "training/champion_mean_reward.png"),
     ]:
         path = os.path.join(OUTPUTS, fname)
         if os.path.exists(path):
             st.markdown(f"**{caption}**")
-            st.image(path, use_container_width=True)
+            st.image(path, width="stretch")

@@ -64,7 +64,7 @@ with open(os.path.join(ROOT, "data", "split.json")) as _f:
 
 MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "models", "pg")
 LOG_DIR = os.path.join(os.path.dirname(__file__), "..", "logs", "ppo")
-RESULTS_PATH = os.path.join(os.path.dirname(__file__), "..", "outputs", "ppo_results.csv")
+RESULTS_PATH = os.path.join(os.path.dirname(__file__), "..", "outputs", "training", "ppo_results.csv")
 
 
 def evaluate_model(model, env, n_episodes=10):

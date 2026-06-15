@@ -27,7 +27,7 @@ from environment.custom_env import KubernetesEnv
 from baselines.hpa_controller import HPAController
 from agents import find_champion, load_agent
 
-OUTPUT_DIR = os.path.join(ROOT, "outputs")
+OUTPUT_DIR = os.path.join(ROOT, "outputs", "hpa_comparison")
 N_OFFSETS = 10                       # start-offsets per trace -> 5 x 10 = 50 paired episodes
 RANDOM_REF, IDEAL_REF = -470.0, -346.0
 
@@ -152,7 +152,7 @@ def main():
 
     name, a, t, p, diff = headline
     _plot(res, name, a, h, t, p)
-    print(f"\nSaved: outputs/dqn_vs_hpa_results.csv, outputs/dqn_vs_hpa_comparison.png")
+    print(f"\nSaved: outputs/hpa_comparison/dqn_vs_hpa_results.csv + comparison.png")
 
 
 def _plot(res, primary, a, h, t, p):
