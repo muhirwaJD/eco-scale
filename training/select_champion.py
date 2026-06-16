@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 sys.path.insert(0, ROOT)
 
-from agents import find_champion, ALGORITHMS
+from utils.agents import find_champion, ALGORITHMS
 
 CHAMPION_PATH = os.path.join(ROOT, "models", "eco_scale_best.zip")
 METADATA_PATH = os.path.join(ROOT, "models", "champion_metadata.json")
