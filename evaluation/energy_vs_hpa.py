@@ -25,7 +25,7 @@ sys.path.insert(0, ROOT)
 
 from evaluation.evaluate_vs_hpa import evaluate, _sb3_policy, N_OFFSETS
 from baselines.hpa_controller import HPAController
-from agents import find_champion, load_agent
+from utils.agents import find_champion, load_agent
 
 OUTPUT_DIR = os.path.join(ROOT, "outputs", "hpa_comparison")
 HPA_TARGETS = [0.5, 0.6, 0.7, 0.8, 0.9]   # 50% = conservative/safe, 90% = aggressive

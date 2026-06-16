@@ -23,7 +23,7 @@ sys.path.insert(0, ROOT)
 
 from environment.custom_env import KubernetesEnv
 from baselines.hpa_controller import HPAController
-from agents import find_champion, load_agent
+from utils.agents import find_champion, load_agent
 from evaluation.evaluate_vs_hpa import _sb3_policy, N_OFFSETS
 
 # ── cost assumptions (explicit; adjust to your infrastructure) ──

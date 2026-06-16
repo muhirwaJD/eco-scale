@@ -7,7 +7,7 @@ the hyperparameter sweeps. We read that straight from the result tables
 last is what gets picked up.
 
 Typical use:
-    from agents import find_champion, load_agent
+    from utils.agents import find_champion, load_agent
 
     champ = find_champion()              # e.g. PPO, run 6
     model = load_agent(champ)            # ready-to-use, has .predict(obs)
@@ -17,8 +17,8 @@ Typical use:
 import os
 import pandas as pd
 
-# Folder this file lives in = project root.
-ROOT = os.path.dirname(os.path.abspath(__file__))
+# Repo root = parent of the utils/ folder this file lives in.
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # For each algorithm: where its result table is, where its models are saved,
 # and how the per-run model file is named. Change these in one place only.

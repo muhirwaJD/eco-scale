@@ -25,7 +25,7 @@ ROOT = os.path.join(os.path.dirname(__file__), "..")
 sys.path.insert(0, ROOT)
 
 from environment.custom_env import KubernetesEnv
-from agents import find_champion, load_agent
+from utils.agents import find_champion, load_agent
 
 
 def run_one_episode(env, choose_action):

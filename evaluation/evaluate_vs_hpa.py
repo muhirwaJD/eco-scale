@@ -25,7 +25,7 @@ sys.path.insert(0, ROOT)
 
 from environment.custom_env import KubernetesEnv
 from baselines.hpa_controller import HPAController
-from agents import find_champion, load_agent
+from utils.agents import find_champion, load_agent
 
 OUTPUT_DIR = os.path.join(ROOT, "outputs", "hpa_comparison")
 N_OFFSETS = 10                       # start-offsets per trace -> 5 x 10 = 50 paired episodes
