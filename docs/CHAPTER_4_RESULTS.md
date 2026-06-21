@@ -132,7 +132,87 @@ operating point automatically and wins on the combined objective; surpassing the
 tuned frontier on energy would require a predictive (look-ahead) state feature so
 the agent can pre-scale before peaks. This is identified as future work.
 
-## 4.7 Summary of Findings
+## 4.7 Real-Cluster Validation (Stage 2)
+
+Sections 4.5–4.6 are *simulated* results: the controllers act inside the Gym
+environment. To check that the learned agent actually transfers to a live system,
+the champion was deployed on a real Kubernetes cluster and run head-to-head
+against the cluster's own native autoscaler. This is a **deployment-feasibility
+validation**, not a second statistical experiment (see caveats below).
+
+### 4.7.1 Setup
+
+| Component | Choice |
+|---|---|
+| Cluster | OrbStack single-node Kubernetes (local) |
+| Workload | CPU-bound FastAPI app (`/work` burns ~50 ms CPU/request), deployed as a Deployment + Service |
+| Metrics | `metrics-server` (real per-pod CPU via `kubectl top`) |
+| Load | Built-in HTTP load generator, 60 worker threads, a **triangular wave** (ramp up to peak, back down) hitting the app through `kubectl port-forward` |
+| Run length | ~240 s per controller, decision tick every 15 s |
+
+The **same load wave** was applied twice — once under each controller — so the
+comparison is like-for-like:
+
+- **RL controller** (`deploy/controller/rl_controller.py`): each tick reads the
+  real replica count (`kubectl get`) and average pod CPU (`kubectl top`), maps
+  them into the agent's normalized 4-D observation (a queue *proxy* is derived
+  from CPU, since the real app has no request queue), asks the **PPO champion**
+  for an action, and applies it with `kubectl scale` (±1 replica).
+- **Native Kubernetes HPA** (`deploy/k8s/hpa.yaml`): standard
+  `HorizontalPodAutoscaler`, target CPU utilization 60 %, min 1 / max 10 — the
+  cluster's built-in autoscaler, driving the *same* deployment.
+
+### 4.7.2 Results
+
+Per-tick replicas, CPU, and p95 latency were logged for each run
+(`outputs/realcluster/`); the comparison is rendered in
+`outputs/realcluster/realcluster_comparison.png`.
+
+| Metric | RL (PPO) | Native HPA |
+|---|---|---|
+| Mean replicas | **5.06** | 7.19 |
+| Max replicas | 6 | 9 |
+| Mean pod CPU (m) | 160 | 211 |
+| p95 latency (ms) | 925 | 890 |
+| Max latency (ms) | 1279 | 1232 |
+
+**Finding.** On the real cluster the RL controller held the service with **~30 %
+fewer replicas** (5.06 vs 7.19) at **~4 % higher p95 latency** (925 vs 890 ms).
+The agent's behaviour transferred — it ran a leaner, demand-tracking policy on
+live Kubernetes — confirming the energy-leanness direction of the simulated
+results.
+
+**Sim-to-real gap (reported honestly).** The trade-off *flipped* relative to
+simulation. In the sim, PPO bought lower latency with *more* pods than a tuned
+HPA; on the real cluster it used *fewer* pods at *slightly higher* latency. Two
+causes: (1) the single-node cluster **saturated** under the wave — both
+controllers sat near ~900 ms p95 / >1.2 s max, so neither had latency headroom to
+trade; and (2) the agent was trained on the simulator's dynamics
+(`latency = utilization`, `POD_CAPACITY = 0.08`, a synthetic queue), which differ
+from real CPU-bound latency. This gap is itself a reportable result and the
+motivation for on-cluster fine-tuning as future work.
+
+### 4.7.3 Caveats
+
+This stage is a **feasibility demonstration**, and its claims are scoped
+accordingly:
+
+- **Single run per controller** — unlike Stage 1 (50 paired episodes + t-test),
+  there is no repetition or significance test here.
+- **Saturated regime** — the cluster was overloaded; results describe behaviour
+  under stress, not a low-latency operating point.
+- **Synthetic load** — an in-process HTTP generator, not Locust (the
+  production-equivalent tool, noted as future work).
+- **`metrics-server`, not Prometheus** — adequate for CPU-driven scaling, but
+  without Prometheus' richer history/percentiles.
+- **Queue proxy** — the observation's queue dimension is approximated from CPU
+  because the real app has no request queue.
+
+The honest takeaway: the agent **does** transfer to live Kubernetes and runs a
+leaner policy, but a statistically validated real-cluster comparison (repeated
+runs, unsaturated load, Prometheus, Locust) remains future work.
+
+## 4.8 Summary of Findings
 
 1. **RL beats the production autoscaler:** PPO significantly outperforms HPA on
    the combined latency/energy objective (p < 0.0001) on held-out real-trace data.
@@ -142,7 +222,12 @@ the agent can pre-scale before peaks. This is identified as future work.
 3. **Energy:** PPO cuts pods ~19% and waste ~65% versus the conservative HPA
    default, without tuning; it matches (not beats) a perfectly-tuned HPA on pure
    energy.
-4. **Methodological contribution:** an over-provisioning failure caused by reward
+4. **Real-cluster transfer:** the champion was deployed on live Kubernetes
+   (OrbStack) and ran head-to-head against native HPA; it transferred and held the
+   service with ~30% fewer replicas, confirming the energy-leanness direction. The
+   trade-off flipped under a saturated single-node load — a documented sim-to-real
+   gap (Section 4.7).
+5. **Methodological contribution:** an over-provisioning failure caused by reward
    misspecification was diagnosed and corrected via offline reward validation
    before training — a reusable safeguard.
 
@@ -150,4 +235,6 @@ the agent can pre-scale before peaks. This is identified as future work.
 is modeled as clipped utilization; real systems show a non-linear latency curve.
 The start-offset episodes used for statistical power are correlated samples, so
 the t-test is supporting evidence alongside per-trace effect sizes. Real-cluster
-validation (Kubernetes + Prometheus) is planned to confirm the simulated findings.
+validation (Section 4.7) confirms the agent transfers and runs a leaner policy on
+live Kubernetes, but as a single saturated-load demonstration rather than a
+repeated, statistically tested comparison.
