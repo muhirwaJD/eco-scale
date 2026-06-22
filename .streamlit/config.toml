@@ -1,0 +1,11 @@
+# Streamlit configuration for the Eco-Scale dashboard (local + Streamlit Cloud).
+[theme]
+primaryColor = "#2E7D32"            # eco green
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F1F8F4"
+textColor = "#1B1B1B"
+font = "sans serif"
+
+[server]
+headless = true
+enableCORS = false
