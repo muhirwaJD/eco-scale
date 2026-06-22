@@ -1,11 +1,16 @@
 # Eco-Scale dependencies (pinned to the versions the champion was trained/served
 # with, so the saved model always loads the same way everywhere — local, Docker,
 # and Streamlit Cloud).
+#
+# CPU-only torch (no CUDA/triton) keeps Linux installs — Streamlit Cloud especially
+# — small. macOS wheels are CPU-only already, so they use the plain version.
+--extra-index-url https://download.pytorch.org/whl/cpu
 
 # --- core RL / simulation ---
 gymnasium==1.2.3
 stable-baselines3==2.8.0
-torch==2.12.0
+torch==2.12.0+cpu ; sys_platform != "darwin"
+torch==2.12.0 ; sys_platform == "darwin"
 numpy==2.4.5
 
 # --- analysis / training utilities ---

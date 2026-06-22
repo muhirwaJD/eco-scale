@@ -15,10 +15,13 @@ import os
 import sys
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from serving.inference_engine import InferenceEngine
+from serving.simulation import SimulationEngine
+from environment.custom_env import KubernetesEnv
 
 app = FastAPI(
     title="Eco-Scale Autoscaler",
@@ -26,8 +29,17 @@ app = FastAPI(
     version="1.0",
 )
 
-# Load the champion once when the service starts.
+# Allow the React control-plane (dev server) to call the API.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Load the champion once when the service starts, and reuse it for the live sim.
 engine = InferenceEngine()
+sim = SimulationEngine(engine=engine)
 
 
 class ClusterState(BaseModel):
@@ -64,3 +76,35 @@ def predict(state: ClusterState):
         day_progress=state.day_progress,
     )
     return {"input": state.model_dump(), **decision}
+
+
+# ── control-plane endpoints (used by the React dashboard) ────────────
+@app.get("/config")
+def config():
+    """Environment constants + cost assumptions the UI needs."""
+    return {
+        "min_pods": KubernetesEnv.MIN_PODS,
+        "max_pods": KubernetesEnv.MAX_PODS,
+        "pod_capacity": KubernetesEnv.POD_CAPACITY,
+        "util_target": KubernetesEnv.UTIL_TARGET,
+        "agent": engine.algorithm,
+        "run": engine.metadata.get("run"),
+    }
+
+
+class SimConfig(BaseModel):
+    hpa_target: float = Field(0.5, ge=0.3, le=0.95,
+                              description="HPA target utilization to compare against")
+
+
+@app.post("/sim/reset")
+def sim_reset(cfg: SimConfig | None = None):
+    """Restart the live RL-vs-HPA simulation; returns the initial state."""
+    target = cfg.hpa_target if cfg else None
+    return sim.reset(hpa_target=target)
+
+
+@app.post("/sim/step")
+def sim_step():
+    """Advance the simulation one tick (5 simulated minutes)."""
+    return sim.step()

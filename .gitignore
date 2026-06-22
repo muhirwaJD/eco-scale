@@ -217,3 +217,11 @@ models/pg/
 #  top-level, so they're tracked automatically — the deployable champion.)
 
 test.py
+
+# Node / React control plane (web/) — the lockfile is kept; deps/build are not
+node_modules/
+dist/
+.vite/
+
+# Claude Code local config (launch.json, settings.local.json, etc.)
+.claude/
