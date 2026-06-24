@@ -23,6 +23,7 @@ from serving.inference_engine import InferenceEngine
 from serving.simulation import SimulationEngine
 from serving.live_cluster import LiveClusterEngine, cluster_available, cluster_info
 from serving.load_generator import LoadGenerator
+from serving.experiment import ExperimentRunner
 from environment.custom_env import KubernetesEnv
 
 app = FastAPI(
@@ -44,6 +45,7 @@ engine = InferenceEngine()
 sim = SimulationEngine(engine=engine)
 live = None      # LiveClusterEngine is created lazily (only if a cluster is present)
 loadgen = LoadGenerator()
+experiment = ExperimentRunner(engine=engine, loadgen=loadgen)
 
 
 class ClusterState(BaseModel):
@@ -173,3 +175,25 @@ def load_stop():
 @app.get("/live/load/status")
 def load_status():
     return loadgen.status()
+
+
+# ── real Stage-2 experiment (RL agent vs real native HPA) ────────────
+class ExpCfg(BaseModel):
+    duration: int = Field(120, ge=40, le=600, description="seconds per phase")
+
+
+@app.post("/experiment/start")
+def experiment_start(cfg: ExpCfg | None = None):
+    if not cluster_available():
+        return {"error": "No reachable Kubernetes cluster / deployment."}
+    return experiment.start(duration=cfg.duration if cfg else 120)
+
+
+@app.get("/experiment/status")
+def experiment_status():
+    return experiment.status()
+
+
+@app.post("/experiment/stop")
+def experiment_stop():
+    return experiment.stop()

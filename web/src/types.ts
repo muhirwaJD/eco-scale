@@ -70,3 +70,26 @@ export interface LoadStatus {
   duration: number;
   p95_ms: number;
 }
+
+export interface ExpPoint {
+  t: number;
+  intensity: number;
+  replicas: number;
+  cpu_m: number;
+  p95_ms: number;
+}
+
+export interface ExperimentStatus {
+  state: "idle" | "running" | "done" | "error";
+  phase: "rl" | "hpa" | null;
+  elapsed: number;
+  duration: number;
+  rl: ExpPoint[];
+  hpa: ExpPoint[];
+  summary: {
+    rl: { avg_pods: number; max_pods: number; p95_ms: number };
+    hpa: { avg_pods: number; max_pods: number; p95_ms: number };
+    verdict: { pod_saving_pct: number; rl_leaner: boolean } | null;
+  } | null;
+  message: string;
+}

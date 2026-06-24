@@ -1,4 +1,4 @@
-import type { ClusterInfo, Config, LoadStatus, SimState } from "./types";
+import type { ClusterInfo, Config, ExperimentStatus, LoadStatus, SimState } from "./types";
 
 // In dev, Vite proxies /api -> http://localhost:8000 (see vite.config.ts).
 const BASE = import.meta.env.VITE_API_URL ?? "/api";
@@ -47,3 +47,16 @@ export const loadStart = (duration: number) =>
 
 export const loadStop = () => jsonFetch<LoadStatus>("/live/load/stop", { method: "POST" });
 export const loadStatus = () => jsonFetch<LoadStatus>("/live/load/status");
+
+// ── real Stage-2 experiment (agent vs real HPA) ──────────────
+export const experimentStart = (duration: number) =>
+  jsonFetch<ExperimentStatus>("/experiment/start", {
+    method: "POST",
+    body: JSON.stringify({ duration }),
+  });
+
+export const experimentStop = () =>
+  jsonFetch<ExperimentStatus>("/experiment/stop", { method: "POST" });
+
+export const experimentStatus = () =>
+  jsonFetch<ExperimentStatus>("/experiment/status");

@@ -7,13 +7,14 @@ import LiveChart, { type ChartPoint } from "./components/LiveChart";
 import DecisionPanel from "./components/DecisionPanel";
 import ClusterInfoPanel from "./components/ClusterInfo";
 import LoadControl from "./components/LoadControl";
+import ExperimentPanel from "./components/ExperimentPanel";
 import {
   getConfig, liveAvailable, liveInfo, liveReset, liveStep,
   loadStart, loadStatus, loadStop, simReset, simStep,
 } from "./api";
 import type { ClusterInfo, Config, LoadStatus, Mode, SimState } from "./types";
 
-type Source = "sim" | "live";
+type Source = "sim" | "live" | "exp";
 
 export default function App() {
   const [config, setConfig] = useState<Config | null>(null);
@@ -106,14 +107,16 @@ export default function App() {
 
   const changeSource = (src: Source) => {
     if (src === source) return;
+    setRunning(false);
     setSource(src);
-    reset(hpaTarget, src);
+    if (src !== "exp") reset(hpaTarget, src);   // exp manages its own lifecycle
   };
 
   const startLoad = () => loadStart(300).then(setLoad).catch(() => {});
   const stopLoad = () => loadStop().then(setLoad).catch(() => {});
 
   const isLive = source === "live";
+  const isExp = source === "exp";
   const sv = state?.savings;
   const st = state?.stats;
 
@@ -150,14 +153,26 @@ export default function App() {
             >
               ◉ Live cluster
             </button>
+            <button
+              onClick={() => changeSource("exp")}
+              disabled={!liveOk}
+              title={liveOk ? "Run the real RL-vs-HPA experiment" : "No reachable cluster"}
+              className={`rounded-md px-3 py-1.5 transition ${
+                source === "exp" ? "bg-eco-green text-white" : "text-slate-400"
+              } ${!liveOk ? "cursor-not-allowed opacity-40" : ""}`}
+            >
+              ⚗ Real A/B (Stage-2)
+            </button>
           </div>
 
           <span
             className={`rounded-full px-3 py-1 text-xs font-medium ${
-              isLive ? "bg-eco-green/20 text-eco-light" : "bg-slate-700/50 text-slate-300"
+              isLive || isExp ? "bg-eco-green/20 text-eco-light" : "bg-slate-700/50 text-slate-300"
             }`}
           >
-            {isLive
+            {isExp
+              ? "● REAL A/B — agent vs native Kubernetes HPA"
+              : isLive
               ? `● LIVE — ${cluster?.deployment ?? "cluster"}${
                   state?.applied ? " · autopilot scaling" : " · read-only"
                 }`
@@ -171,6 +186,10 @@ export default function App() {
           </div>
         )}
 
+        {isExp && <ExperimentPanel />}
+
+        {!isExp && (
+        <>
         {/* controls */}
         <Controls
           source={source}
@@ -269,6 +288,8 @@ export default function App() {
               tone="slate"
             />
           </div>
+        )}
+        </>
         )}
       </main>
     </div>
