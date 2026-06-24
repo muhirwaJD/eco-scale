@@ -1,4 +1,4 @@
-import type { Config, SimState } from "./types";
+import type { ClusterInfo, Config, LoadStatus, SimState } from "./types";
 
 // In dev, Vite proxies /api -> http://localhost:8000 (see vite.config.ts).
 const BASE = import.meta.env.VITE_API_URL ?? "/api";
@@ -14,11 +14,36 @@ async function jsonFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const getConfig = () => jsonFetch<Config>("/config");
 
+// ── simulation (recorded trace) ──────────────────────────────
 export const simReset = (hpaTarget: number) =>
   jsonFetch<SimState>("/sim/reset", {
     method: "POST",
     body: JSON.stringify({ hpa_target: hpaTarget }),
   });
 
-export const simStep = () =>
-  jsonFetch<SimState>("/sim/step", { method: "POST" });
+export const simStep = () => jsonFetch<SimState>("/sim/step", { method: "POST" });
+
+// ── live cluster (real Kubernetes) ───────────────────────────
+export const liveAvailable = () =>
+  jsonFetch<{ available: boolean }>("/live/available");
+
+export const liveReset = () =>
+  jsonFetch<SimState>("/live/reset", { method: "POST" });
+
+export const liveStep = (apply: boolean) =>
+  jsonFetch<SimState>("/live/step", {
+    method: "POST",
+    body: JSON.stringify({ apply }),
+  });
+
+export const liveInfo = () => jsonFetch<ClusterInfo>("/live/info");
+
+// ── UI-controllable load generator ───────────────────────────
+export const loadStart = (duration: number) =>
+  jsonFetch<LoadStatus>("/live/load/start", {
+    method: "POST",
+    body: JSON.stringify({ duration }),
+  });
+
+export const loadStop = () => jsonFetch<LoadStatus>("/live/load/stop", { method: "POST" });
+export const loadStatus = () => jsonFetch<LoadStatus>("/live/load/status");

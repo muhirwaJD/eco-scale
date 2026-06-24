@@ -21,6 +21,8 @@ from pydantic import BaseModel, Field
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from serving.inference_engine import InferenceEngine
 from serving.simulation import SimulationEngine
+from serving.live_cluster import LiveClusterEngine, cluster_available, cluster_info
+from serving.load_generator import LoadGenerator
 from environment.custom_env import KubernetesEnv
 
 app = FastAPI(
@@ -37,9 +39,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load the champion once when the service starts, and reuse it for the live sim.
+# Load the champion once when the service starts, and reuse it everywhere.
 engine = InferenceEngine()
 sim = SimulationEngine(engine=engine)
+live = None      # LiveClusterEngine is created lazily (only if a cluster is present)
+loadgen = LoadGenerator()
 
 
 class ClusterState(BaseModel):
@@ -108,3 +112,64 @@ def sim_reset(cfg: SimConfig | None = None):
 def sim_step():
     """Advance the simulation one tick (5 simulated minutes)."""
     return sim.step()
+
+
+# ── LIVE cluster mode (reads the real Kubernetes cluster) ────────────
+class LiveStep(BaseModel):
+    apply: bool = Field(False, description="If true (autopilot), actually kubectl scale the deployment")
+
+
+@app.get("/live/available")
+def live_available():
+    """Tell the UI whether a live cluster + target deployment is reachable."""
+    return {"available": cluster_available()}
+
+
+@app.post("/live/reset")
+def live_reset():
+    """Start a live session; reads the real cluster state (agent only, no HPA)."""
+    global live
+    if not cluster_available():
+        return {"error": "No reachable Kubernetes cluster / deployment."}
+    live = LiveClusterEngine(engine=engine)
+    return live.reset()
+
+
+@app.post("/live/step")
+def live_step(step: LiveStep | None = None):
+    """Read the live cluster, run the agent, and (if apply) scale it."""
+    global live
+    if live is None:
+        if not cluster_available():
+            return {"error": "No reachable Kubernetes cluster / deployment."}
+        live = LiveClusterEngine(engine=engine)
+        live.reset()
+    return live.step(apply=step.apply if step else False)
+
+
+@app.get("/live/info")
+def live_info():
+    """Live cluster details (context, namespace, image, pods) for the UI."""
+    if not cluster_available():
+        return {"error": "No reachable Kubernetes cluster / deployment."}
+    return cluster_info()
+
+
+# ── UI-controllable load generator (traffic only; scales nothing) ────
+class LoadCfg(BaseModel):
+    duration: int = Field(300, ge=20, le=1800, description="seconds the traffic wave runs")
+
+
+@app.post("/live/load/start")
+def load_start(cfg: LoadCfg | None = None):
+    return loadgen.start(duration=cfg.duration if cfg else 300)
+
+
+@app.post("/live/load/stop")
+def load_stop():
+    return loadgen.stop()
+
+
+@app.get("/live/load/status")
+def load_status():
+    return loadgen.status()

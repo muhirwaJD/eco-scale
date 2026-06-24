@@ -18,7 +18,9 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default function DecisionPanel({ s, mode }: { s: SimState | null; mode: Mode }) {
+export default function DecisionPanel({
+  s, mode, live = false,
+}: { s: SimState | null; mode: Mode; live?: boolean }) {
   if (!s) return null;
   const ui = ACTION_UI[s.rl.action_name] ?? ACTION_UI.maintain;
   const obs = s.rl.observation;
@@ -79,18 +81,34 @@ export default function DecisionPanel({ s, mode }: { s: SimState | null; mode: M
         </div>
       </div>
 
-      {/* head-to-head current state */}
-      <div>
-        <div className="mb-1 text-[10px] uppercase tracking-wide text-slate-500">
-          RL vs HPA (now)
+      {/* current state — live shows the real cluster; sim shows RL vs HPA */}
+      {live ? (
+        <div>
+          <div className="mb-1 text-[10px] uppercase tracking-wide text-slate-500">
+            Cluster now
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Stat label="Replicas" value={`${s.rl.pods}`} />
+            <Stat label="Peak pods" value={`${s.stats?.peak_pods ?? s.rl.pods}`} />
+            <Stat label="Avg pod CPU" value={`${Math.round(s.avg_cpu_millicores ?? 0)}m`} />
+            <Stat label="Scaling actions" value={`${s.stats?.scaling_actions ?? 0}`} />
+          </div>
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <Stat label="RL pods" value={`${s.rl.pods}`} />
-          <Stat label={`HPA@${Math.round(s.hpa.target * 100)}% pods`} value={`${s.hpa.pods}`} />
-          <Stat label="RL latency" value={`${Math.round(s.rl.latency * 100)}%`} />
-          <Stat label="HPA latency" value={`${Math.round(s.hpa.latency * 100)}%`} />
-        </div>
-      </div>
+      ) : (
+        s.hpa && (
+          <div>
+            <div className="mb-1 text-[10px] uppercase tracking-wide text-slate-500">
+              RL vs HPA (now)
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Stat label="RL pods" value={`${s.rl.pods}`} />
+              <Stat label={`HPA@${Math.round(s.hpa.target * 100)}% pods`} value={`${s.hpa.pods}`} />
+              <Stat label="RL latency" value={`${Math.round((s.rl.latency ?? 0) * 100)}%`} />
+              <Stat label="HPA latency" value={`${Math.round(s.hpa.latency * 100)}%`} />
+            </div>
+          </div>
+        )
+      )}
     </div>
   );
 }

@@ -5,11 +5,12 @@ interface Props {
   config: Config | null;
   mode: Mode;
   killed: boolean;
+  live: boolean;            // scaling controls only matter on a real cluster
   onMode: (m: Mode) => void;
   onKill: () => void;
 }
 
-export default function Header({ config, mode, killed, onMode, onKill }: Props) {
+export default function Header({ config, mode, killed, live, onMode, onKill }: Props) {
   return (
     <header className="flex items-center justify-between border-b border-slate-800 px-6 py-4">
       <div className="flex items-center gap-3">
@@ -26,6 +27,7 @@ export default function Header({ config, mode, killed, onMode, onKill }: Props) 
         </div>
       </div>
 
+      {live && (
       <div className="flex items-center gap-3">
         {/* mode switch: recommend-only vs autopilot */}
         <div className="flex rounded-lg border border-slate-700 p-0.5 text-xs">
@@ -59,6 +61,7 @@ export default function Header({ config, mode, killed, onMode, onKill }: Props) 
           <Power size={14} /> {killed ? "Agent paused (HPA)" : "Kill switch"}
         </button>
       </div>
+      )}
     </header>
   );
 }

@@ -14,21 +14,23 @@ export interface ChartPoint {
   hour: number;
   load: number; // %
   rlPods: number;
-  hpaPods: number;
+  hpaPods?: number;
 }
 
 export default function LiveChart({
   data,
   maxPods,
+  showHpa = true,
 }: {
   data: ChartPoint[];
   maxPods: number;
+  showHpa?: boolean;
 }) {
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-slate-200">
-          Live replicas — RL agent vs HPA
+          {showHpa ? "Live replicas — RL agent vs HPA" : "Live replicas — RL agent on the cluster"}
         </h2>
         <span className="text-xs text-slate-500">load shaded · replicas as lines</span>
       </div>
@@ -79,17 +81,19 @@ export default function LiveChart({
             fillOpacity={0.7}
             isAnimationActive={false}
           />
-          <Line
-            yAxisId="pods"
-            type="stepAfter"
-            dataKey="hpaPods"
-            name="HPA"
-            stroke="#ef4444"
-            strokeWidth={2}
-            strokeDasharray="5 4"
-            dot={false}
-            isAnimationActive={false}
-          />
+          {showHpa && (
+            <Line
+              yAxisId="pods"
+              type="stepAfter"
+              dataKey="hpaPods"
+              name="HPA"
+              stroke="#ef4444"
+              strokeWidth={2}
+              strokeDasharray="5 4"
+              dot={false}
+              isAnimationActive={false}
+            />
+          )}
           <Line
             yAxisId="pods"
             type="stepAfter"
