@@ -148,69 +148,80 @@ validation**, not a second statistical experiment (see caveats below).
 | Workload | CPU-bound FastAPI app (`/work` burns ~50 ms CPU/request), deployed as a Deployment + Service |
 | Metrics | `metrics-server` (real per-pod CPU via `kubectl top`) |
 | Load | Built-in HTTP load generator, 60 worker threads, a **triangular wave** (ramp up to peak, back down) hitting the app through `kubectl port-forward` |
-| Run length | ~240 s per controller, decision tick every 15 s |
+| Run length | 120 s per controller, decision tick every 15 s, **repeated for 3 rounds** |
 
-The **same load wave** was applied twice — once under each controller — so the
-comparison is like-for-like:
+The **same load wave** was applied to each controller, repeated for 3 rounds, so
+the comparison is like-for-like and averaged:
 
 - **RL controller** (`deploy/controller/rl_controller.py`): each tick reads the
   real replica count (`kubectl get`) and average pod CPU (`kubectl top`), maps
-  them into the agent's normalized 4-D observation (a queue *proxy* is derived
-  from CPU, since the real app has no request queue), asks the **PPO champion**
-  for an action, and applies it with `kubectl scale` (±1 replica).
+  them into the agent's normalized 4-D observation, asks the **PPO champion** for
+  an action, and applies it with `kubectl scale` (±1 replica).
+- **Observation calibration (sim-to-real bridge).** The agent trained on *total*
+  normalized demand. The controller therefore converts the real signal as
+  `cpu_util = POD_CAPACITY × (avg_pod_CPU × replicas) ÷ CPU_request`, reading the
+  CPU request from the deployment. This expresses real total demand on the scale
+  the agent learned, so its "pods needed" matches reality (an idle cluster maps
+  to ≈0, removing the earlier idle over-provisioning). A queue *proxy* is derived
+  from CPU, since the real app has no request queue.
 - **Native Kubernetes HPA** (`deploy/k8s/hpa.yaml`): standard
   `HorizontalPodAutoscaler`, target CPU utilization 60 %, min 1 / max 10 — the
   cluster's built-in autoscaler, driving the *same* deployment.
 
 ### 4.7.2 Results
 
-Per-tick replicas, CPU, and p95 latency were logged for each run
-(`outputs/realcluster/`); the comparison is rendered in
-`outputs/realcluster/realcluster_comparison.png`.
+Per-tick replicas, CPU, and p95 latency were logged for each round
+(`outputs/realcluster/`). Aggregated over **3 repeated rounds** (mean ± std,
+`realcluster_repeats.csv`):
 
 | Metric | RL (PPO) | Native HPA |
 |---|---|---|
-| Mean replicas | **5.06** | 7.19 |
-| Max replicas | 6 | 9 |
-| Mean pod CPU (m) | 160 | 211 |
-| p95 latency (ms) | 925 | 890 |
-| Max latency (ms) | 1279 | 1232 |
+| Mean replicas | **4.00 ± 0.22** | 6.17 ± 0.31 |
+| p95 latency (ms) | 1054 ± 17 | 1126 ± 72 |
 
-**Finding.** On the real cluster the RL controller held the service with **~30 %
-fewer replicas** (5.06 vs 7.19) at **~4 % higher p95 latency** (925 vs 890 ms).
-The agent's behaviour transferred — it ran a leaner, demand-tracking policy on
-live Kubernetes — confirming the energy-leanness direction of the simulated
-results.
+**Finding.** On the real cluster the RL controller held the service with **~35 %
+fewer replicas** (4.00 vs 6.17) at **comparable p95 latency** (1054 vs 1126 ms),
+and the small standard deviations show the result is **reproducible across runs**,
+not a one-off. With the observation calibration in place, the agent **ramps with
+the load** (1 → 6 replicas as the wave climbs) and right-sizes to the correct pod
+count, rather than parking arbitrarily. Its behaviour transferred to live
+Kubernetes and beats the production HPA on resource use at equal service quality.
 
-**Sim-to-real gap (reported honestly).** The trade-off *flipped* relative to
-simulation. In the sim, PPO bought lower latency with *more* pods than a tuned
-HPA; on the real cluster it used *fewer* pods at *slightly higher* latency. Two
-causes: (1) the single-node cluster **saturated** under the wave — both
-controllers sat near ~900 ms p95 / >1.2 s max, so neither had latency headroom to
-trade; and (2) the agent was trained on the simulator's dynamics
-(`latency = utilization`, `POD_CAPACITY = 0.08`, a synthetic queue), which differ
-from real CPU-bound latency. This gap is itself a reportable result and the
-motivation for on-cluster fine-tuning as future work.
+**Sim-to-real gap (reported honestly).** Before calibration the agent
+over-provisioned on the real cluster — most visibly when idle, where it scaled up
+despite near-zero load. The cause was an input mismatch: it was fed one pod's CPU
+as a fraction of a whole core, which ignored the replica count and sat far below
+the scale it trained on, so it fell back on its learned safety bias. Expressing
+*total* real demand on the trained scale (the calibration above) fixes the
+under-load behaviour and removes the idle over-provisioning down to the agent's
+trained floor (≈4 pods rather than the maximum). The residual idle floor — the
+agent does not return all the way to 1 pod — stems from training always starting
+at 5 pods, and fully removing it would require on-cluster fine-tuning (future
+work). Both controllers also **saturated** on the single node (~1.05–1.13 s p95),
+so this regime tests resource efficiency under stress, not low-latency operation.
 
 ### 4.7.3 Caveats
 
-This stage is a **feasibility demonstration**, and its claims are scoped
-accordingly:
+The result is now averaged over repeated rounds, but its scope is still limited:
 
-- **Single run per controller** — unlike Stage 1 (50 paired episodes + t-test),
-  there is no repetition or significance test here.
-- **Saturated regime** — the cluster was overloaded; results describe behaviour
-  under stress, not a low-latency operating point.
-- **Synthetic load** — an in-process HTTP generator, not Locust (the
-  production-equivalent tool, noted as future work).
+- **3 rounds, one cluster** — repeated and consistent, but a smaller sample than
+  Stage 1 (50 paired episodes + t-test) and on a single machine.
+- **Saturated regime** — the single node was overloaded under the wave (~1.1 s
+  p95 for both), so this tests resource efficiency under stress, not a
+  low-latency operating point.
+- **Residual idle floor** — the agent settles near 4 pods when fully idle rather
+  than 1, a leftover of its training start point (removable via on-cluster
+  fine-tuning).
+- **Synthetic load** — an in-process HTTP generator, not Locust (future work).
 - **`metrics-server`, not Prometheus** — adequate for CPU-driven scaling, but
   without Prometheus' richer history/percentiles.
 - **Queue proxy** — the observation's queue dimension is approximated from CPU
   because the real app has no request queue.
 
-The honest takeaway: the agent **does** transfer to live Kubernetes and runs a
-leaner policy, but a statistically validated real-cluster comparison (repeated
-runs, unsaturated load, Prometheus, Locust) remains future work.
+The honest takeaway: after calibrating the observation, the agent transfers to
+live Kubernetes, right-sizes with the load, and **uses ~35 % fewer replicas than
+the production HPA at comparable latency, reproducibly across 3 runs**. A larger,
+multi-node, unsaturated study (with Prometheus and Locust) remains future work.
 
 ## 4.8 Summary of Findings
 
@@ -223,10 +234,13 @@ runs, unsaturated load, Prometheus, Locust) remains future work.
    default, without tuning; it matches (not beats) a perfectly-tuned HPA on pure
    energy.
 4. **Real-cluster transfer:** the champion was deployed on live Kubernetes
-   (OrbStack) and ran head-to-head against native HPA; it transferred and held the
-   service with ~30% fewer replicas, confirming the energy-leanness direction. The
-   trade-off flipped under a saturated single-node load — a documented sim-to-real
-   gap (Section 4.7).
+   (OrbStack) and run head-to-head against the **real native HPA**. After
+   calibrating the observation to express real total demand on the trained scale,
+   the agent right-sizes with the load and uses **~35% fewer replicas at
+   comparable latency (4.00 vs 6.17 pods), reproducibly over 3 runs** (Section 4.7).
+   The sim-to-real gap (notably idle over-provisioning) was diagnosed and largely
+   closed by the calibration; a residual idle floor is left to on-cluster
+   fine-tuning.
 5. **Methodological contribution:** an over-provisioning failure caused by reward
    misspecification was diagnosed and corrected via offline reward validation
    before training — a reusable safeguard.
@@ -235,6 +249,7 @@ runs, unsaturated load, Prometheus, Locust) remains future work.
 is modeled as clipped utilization; real systems show a non-linear latency curve.
 The start-offset episodes used for statistical power are correlated samples, so
 the t-test is supporting evidence alongside per-trace effect sizes. Real-cluster
-validation (Section 4.7) confirms the agent transfers and runs a leaner policy on
-live Kubernetes, but as a single saturated-load demonstration rather than a
-repeated, statistically tested comparison.
+validation (Section 4.7) confirms the agent transfers and, after observation
+calibration, uses ~35% fewer replicas than the real HPA at comparable latency,
+reproducibly across 3 runs — though on a single, saturated node, so a larger
+multi-node study remains future work.

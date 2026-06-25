@@ -1,0 +1,3 @@
+metric,RL_mean,RL_std,HPA_mean,HPA_std
+avg_pods,4.0,0.22,6.17,0.31
+p95_ms,1054.0,17.0,1126.0,72.0
