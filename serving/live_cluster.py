@@ -34,6 +34,32 @@ def cluster_available():
     return out.endswith(DEPLOYMENT)
 
 
+def get_cpu_request_millicores():
+    """Read the pod's CPU request (e.g. '200m') from the deployment. Default 200."""
+    out = _sh(["kubectl", "get", "deployment", DEPLOYMENT, "-o",
+               "jsonpath={.spec.template.spec.containers[0].resources.requests.cpu}"])
+    if out.endswith("m") and out[:-1].isdigit():
+        return float(out[:-1])
+    try:
+        return float(out) * 1000.0          # e.g. "1" core -> 1000m
+    except ValueError:
+        return 200.0
+
+
+def real_cpu_util(avg_cpu_m, replicas, request_m):
+    """Convert REAL cluster CPU into the [0,1] load value the agent trained on.
+
+    The agent learned on TOTAL normalized demand, where one pod serves
+    POD_CAPACITY of it. So we use the total CPU across all pods
+    (avg_cpu_m * replicas), express it in units of the pod's CPU request, and
+    rescale by POD_CAPACITY. This makes the agent's "pods needed" match reality
+    (e.g. an idle cluster maps to ~0, so the agent stops over-provisioning).
+    """
+    total_m = avg_cpu_m * max(replicas, 1)
+    cu = KubernetesEnv.POD_CAPACITY * total_m / max(request_m, 1.0)
+    return float(min(max(cu, 0.0), 1.0))
+
+
 def cluster_info():
     """Live cluster details for the UI (so nobody needs the terminal)."""
     context = _sh(["kubectl", "config", "current-context"]) or "unknown"
@@ -87,6 +113,7 @@ class LiveClusterEngine:
 
     def __init__(self, engine=None):
         self.engine = engine or InferenceEngine()
+        self.request_m = get_cpu_request_millicores()      # calibration: pod CPU request
         self.reset()
 
     # ── cluster IO ───────────────────────────────────────────────
@@ -115,8 +142,8 @@ class LiveClusterEngine:
         self._actions = {"up": 0, "hold": 0, "down": 0}
         self._peak_pods = max(self._get_replicas(), MIN_PODS)
         self._replicas = self._peak_pods
-        self._cpu = min(self._get_avg_cpu_millicores() / 1000.0, 1.0)
-        self._avg_cpu_m = round(self._cpu * 1000, 1)
+        self._avg_cpu_m = self._get_avg_cpu_millicores()
+        self._cpu = real_cpu_util(self._avg_cpu_m, self._replicas, self.request_m)
         self._rl = (1, None, "maintain")
         return self._build(applied=False)
 
@@ -124,7 +151,7 @@ class LiveClusterEngine:
     def step(self, apply=False):
         replicas = max(self._get_replicas(), MIN_PODS)
         avg_cpu_m = self._get_avg_cpu_millicores()
-        cpu_util = min(avg_cpu_m / 1000.0, 1.0)
+        cpu_util = real_cpu_util(avg_cpu_m, replicas, self.request_m)
         queue_proxy = cpu_util * KubernetesEnv.QUEUE_SCALE
         day_progress = (self.tick % DAY_TICKS) / DAY_TICKS
 

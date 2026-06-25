@@ -19,6 +19,7 @@ import threading
 from deploy.controller.rl_controller import (
     get_replicas, get_avg_cpu_millicores, scale_to, DEPLOYMENT, sh,
 )
+from serving.live_cluster import real_cpu_util, get_cpu_request_millicores
 
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 HPA_YAML = os.path.join(ROOT, "deploy", "k8s", "hpa.yaml")
@@ -30,6 +31,7 @@ class ExperimentRunner:
     def __init__(self, engine, loadgen):
         self.engine = engine
         self.loadgen = loadgen
+        self._request_m = get_cpu_request_millicores()         # calibration: pod CPU request
         self.state = "idle"           # idle | running | done | error
         self.phase = None             # rl | hpa | null
         self.duration = 0
@@ -82,7 +84,7 @@ class ExperimentRunner:
             cpu_m = get_avg_cpu_millicores()
             ls = self.loadgen.status()
             if mode == "rl":
-                cu = min(cpu_m / 1000.0, 1.0)
+                cu = real_cpu_util(cpu_m, replicas, self._request_m)
                 d = self.engine.decide(cpu_util=cu, pods=replicas,
                                        queue_depth=cu * 1000.0,
                                        day_progress=elapsed / duration)

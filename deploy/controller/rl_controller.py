@@ -28,6 +28,7 @@ sys.path.insert(0, ROOT)
 
 from environment.custom_env import KubernetesEnv
 from serving.inference_engine import InferenceEngine
+from serving.live_cluster import real_cpu_util, get_cpu_request_millicores
 
 DEPLOYMENT = "eco-sample-app"
 MIN_PODS, MAX_PODS = 1, 10        # cluster scaling bounds (HPA uses the same)
@@ -70,6 +71,7 @@ def main():
     args = ap.parse_args()
 
     engine = InferenceEngine()
+    request_m = get_cpu_request_millicores()
     print(f"RL controller using {engine.algorithm} champion on '{DEPLOYMENT}'")
 
     start = time.perf_counter()
@@ -81,7 +83,8 @@ def main():
 
         replicas = get_replicas()
         avg_cpu_m = get_avg_cpu_millicores()
-        cpu_util = min(avg_cpu_m / 1000.0, 1.0)              # fraction of 1 core
+        # calibrate real total CPU demand into the load value the agent trained on
+        cpu_util = real_cpu_util(avg_cpu_m, max(replicas, 1), request_m)
         queue_proxy = cpu_util * KubernetesEnv.QUEUE_SCALE   # proxy (no real queue)
         day_progress = min(elapsed / args.duration, 1.0)
 
