@@ -1,3 +1,13 @@
+---
+title: Eco-Scale Console
+emoji: 📈
+colorFrom: green
+colorTo: gray
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Eco-Scale — Predictive Kubernetes Autoscaling with Deep RL
 
 Reinforcement-learning autoscaler for Kubernetes, trained on **real Alibaba 2018 cluster traces**

@@ -23,7 +23,7 @@ def test_health_endpoint():
 
 
 def test_info_endpoint():
-    r = client.get("/")
+    r = client.get("/info")
     assert r.status_code == 200
     body = r.json()
     assert body["service"] == "Eco-Scale Autoscaler"

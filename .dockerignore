@@ -8,3 +8,6 @@ __pycache__/
 .DS_Store
 notebooks/
 .claude/
+node_modules/
+web/node_modules/
+web/dist/

@@ -25,7 +25,12 @@ ACTION_NAMES = {0: "scale_down", 1: "maintain", 2: "scale_up"}
 
 
 def _sh(cmd):
-    return subprocess.run(cmd, capture_output=True, text=True).stdout.strip()
+    # Returns "" if kubectl is missing or the call fails (e.g. on a host with no
+    # cluster, like the public deploy) so the Live/Stage-2 tabs disable cleanly.
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True).stdout.strip()
+    except Exception:
+        return ""
 
 
 def cluster_available():

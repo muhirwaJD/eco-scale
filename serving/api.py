@@ -57,7 +57,7 @@ class ClusterState(BaseModel):
                                 description="Fraction of the daily cycle, 0..1")
 
 
-@app.get("/")
+@app.get("/info")
 def info():
     return {
         "service": "Eco-Scale Autoscaler",
@@ -197,3 +197,14 @@ def experiment_status():
 @app.post("/experiment/stop")
 def experiment_stop():
     return experiment.stop()
+
+
+# ── serve the built React console (if present) ──────────────────────
+# In the public deploy the frontend is built into web/dist and served by this
+# same app, so the console + API live behind one URL. API routes above are
+# matched first; this static mount catches everything else (the SPA).
+from fastapi.staticfiles import StaticFiles  # noqa: E402
+
+_DIST = os.path.join(os.path.dirname(__file__), "..", "web", "dist")
+if os.path.isdir(_DIST):
+    app.mount("/", StaticFiles(directory=_DIST, html=True), name="console")
