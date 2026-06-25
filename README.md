@@ -17,8 +17,8 @@ latency against energy use.
 
 Three algorithms are compared (**DQN**, **PPO**, **REINFORCE**); **PPO** is the deployed agent.
 
-- 🌐 **Live dashboard:** _<add your Streamlit Cloud URL here>_
-- 🎬 **Demo video:** _<add your 5-min video link here>_
+- 🌐 **Live console:** https://muhirwa56-eco-scale-console.hf.space/ (Simulation mode — no setup needed)
+- 🎬 **Demo video:** https://www.veed.io/view/8d8e28a2-8dd1-4ba3-9695-cf01fa8be08e?source=Dashboard&panel=share
 
 ---
 
