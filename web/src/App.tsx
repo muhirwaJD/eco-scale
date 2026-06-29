@@ -8,6 +8,8 @@ import DecisionPanel from "./components/DecisionPanel";
 import ClusterInfoPanel from "./components/ClusterInfo";
 import LoadControl from "./components/LoadControl";
 import ExperimentPanel from "./components/ExperimentPanel";
+import EventLog, { type EventItem } from "./components/EventLog";
+import HpaHelp from "./components/HpaHelp";
 import {
   getConfig, liveAvailable, liveInfo, liveReset, liveStep,
   loadStart, loadStatus, loadStop, simReset, simStep,
@@ -30,6 +32,7 @@ export default function App() {
   const [liveOk, setLiveOk] = useState(false);
   const [cluster, setCluster] = useState<ClusterInfo | null>(null);
   const [load, setLoad] = useState<LoadStatus | null>(null);
+  const [events, setEvents] = useState<EventItem[]>([]);
 
   const timer = useRef<number | null>(null);
   const sourceRef = useRef(source);
@@ -42,7 +45,23 @@ export default function App() {
     load: Math.round(s.cpu * 100),
     rlPods: s.rl.pods,
     hpaPods: s.hpa?.pods,
+    action: s.rl.action_name,
+    podsSaved: s.savings?.pod_ticks_saved,
+    kwh: s.savings?.kwh,
+    frw: s.savings?.frw,
+    breaches: s.savings?.breaches_avoided,
+    replicas: s.stats?.replicas ?? s.rl.pods,
+    avgCpu: s.avg_cpu_millicores,
+    scaling: s.stats?.scaling_actions,
   });
+
+  const toEvent = (s: SimState): EventItem => ({
+    hour: +((s.tick / s.max_ticks) * 24).toFixed(2),
+    action: s.rl.action_name,
+    rationale: s.rl.rationale,
+  });
+
+  const spark = (key: string) => history.map((f) => Number(f[key] ?? 0));
 
   const reset = useCallback(
     async (target = hpaTarget, src: Source = sourceRef.current) => {
@@ -51,6 +70,7 @@ export default function App() {
         const s = src === "live" ? await liveReset() : await simReset(target);
         setState(s);
         setHistory([toPoint(s)]);
+        setEvents([]);
         setError(null);
       } catch {
         setError("Cannot reach the API. Start it with: uvicorn serving.api:app");
@@ -77,6 +97,7 @@ export default function App() {
           sourceRef.current === "live" ? await liveStep(applyRef.current) : await simStep();
         setState(s);
         setHistory((h) => [...h, toPoint(s)]);
+        setEvents((e) => [...e, toEvent(s)].slice(-80));
         if (s.done) setRunning(false);
       } catch {
         setRunning(false);
@@ -134,49 +155,45 @@ export default function App() {
       <main className="mx-auto max-w-7xl space-y-4 p-6">
         {/* data source toggle + status badge */}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex rounded-lg border border-slate-700 p-0.5 text-xs">
-            <button
-              onClick={() => changeSource("sim")}
-              className={`rounded-md px-3 py-1.5 transition ${
-                source === "sim" ? "bg-slate-700 text-white" : "text-slate-400"
-              }`}
-            >
-              ▶ Simulation (recorded trace)
-            </button>
-            <button
-              onClick={() => changeSource("live")}
-              disabled={!liveOk}
-              title={liveOk ? "Read the real Kubernetes cluster" : "No reachable cluster"}
-              className={`rounded-md px-3 py-1.5 transition ${
-                source === "live" ? "bg-eco-green text-white" : "text-slate-400"
-              } ${!liveOk ? "cursor-not-allowed opacity-40" : ""}`}
-            >
-              ◉ Live cluster
-            </button>
-            <button
-              onClick={() => changeSource("exp")}
-              disabled={!liveOk}
-              title={liveOk ? "Run the real RL-vs-HPA experiment" : "No reachable cluster"}
-              className={`rounded-md px-3 py-1.5 transition ${
-                source === "exp" ? "bg-eco-green text-white" : "text-slate-400"
-              } ${!liveOk ? "cursor-not-allowed opacity-40" : ""}`}
-            >
-              ⚗ Real A/B (Stage-2)
-            </button>
+          <div className="flex rounded-xl border border-white/10 bg-white/5 p-1 text-xs font-medium">
+            {([
+              { key: "sim", label: "Simulation", enabled: true },
+              { key: "live", label: "Live cluster", enabled: liveOk },
+              { key: "exp", label: "Benchmark", enabled: liveOk },
+            ] as const).map((t) => (
+              <button
+                key={t.key}
+                onClick={() => changeSource(t.key)}
+                disabled={!t.enabled}
+                title={t.enabled ? "" : "No reachable cluster"}
+                className={`rounded-lg px-3.5 py-1.5 transition-all ${
+                  source === t.key
+                    ? "bg-white/10 text-white shadow-sm"
+                    : "text-slate-400 hover:text-slate-200"
+                } ${!t.enabled ? "cursor-not-allowed opacity-40 hover:text-slate-400" : ""}`}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
 
           <span
-            className={`rounded-full px-3 py-1 text-xs font-medium ${
-              isLive || isExp ? "bg-eco-green/20 text-eco-light" : "bg-slate-700/50 text-slate-300"
+            className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium ring-1 ${
+              isLive || isExp
+                ? "bg-eco-green/10 text-eco-light ring-eco-green/25"
+                : "bg-eco-amber/10 text-eco-amber ring-eco-amber/25"
             }`}
           >
+            <span className={`h-1.5 w-1.5 animate-pulse rounded-full ${
+              isLive || isExp ? "bg-eco-light" : "bg-eco-amber"
+            }`} />
             {isExp
-              ? "● REAL A/B — agent vs native Kubernetes HPA"
+              ? "BENCHMARK — agent vs native Kubernetes HPA"
               : isLive
-              ? `● LIVE — ${cluster?.deployment ?? "cluster"}${
+              ? `LIVE — ${cluster?.deployment ?? "cluster"}${
                   state?.applied ? " · autopilot scaling" : " · read-only"
                 }`
-              : "● SIMULATION — replaying a real Alibaba trace"}
+              : "SIMULATION — replaying a real Alibaba trace"}
           </span>
         </div>
 
@@ -190,7 +207,6 @@ export default function App() {
 
         {!isExp && (
         <>
-        {/* controls */}
         <Controls
           source={source}
           running={running}
@@ -204,28 +220,7 @@ export default function App() {
           onHpaTarget={changeHpaTarget}
         />
 
-        {/* TOP: the comparison (chart) + decision */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="space-y-2 lg:col-span-2">
-            <LiveChart data={history} maxPods={config?.max_pods ?? 20} showHpa={!isLive} />
-            <p className="px-1 text-xs text-slate-500">
-              {isLive
-                ? "Live Kubernetes cluster: the agent reads real pod CPU and scales the deployment. It is the only autoscaler — to compare against real HPA, use the Stage-2 experiment."
-                : "Simulation on a held-out real Alibaba trace. The RL agent and HPA each drive their own copy of the workload."}
-            </p>
-          </div>
-          <DecisionPanel s={state} mode={isLive ? mode : "autopilot"} live={isLive} />
-        </div>
-
-        {/* MIDDLE (live only): cluster details + traffic generator */}
-        {isLive && (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <ClusterInfoPanel info={cluster} />
-            <LoadControl status={load} onStart={startLoad} onStop={stopLoad} />
-          </div>
-        )}
-
-        {/* BOTTOM: impact — live shows the agent's own real metrics; sim shows vs-HPA savings */}
+        {/* STAT ROW (top) — live shows the agent's own metrics; sim shows vs-HPA savings */}
         {isLive ? (
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <KpiCard
@@ -234,6 +229,7 @@ export default function App() {
               sub={`peak ${st?.peak_pods ?? state?.rl.pods ?? 0} this session`}
               icon={<Server size={15} />}
               tone="green"
+              spark={spark("replicas")}
             />
             <KpiCard
               label="Avg pod CPU"
@@ -241,6 +237,7 @@ export default function App() {
               sub={`${Math.round((state?.cpu ?? 0) * 100)}% of one core`}
               icon={<Cpu size={15} />}
               tone="slate"
+              spark={spark("avgCpu")}
             />
             <KpiCard
               label="Scaling actions"
@@ -248,6 +245,7 @@ export default function App() {
               sub={`${st?.up ?? 0} up · ${st?.down ?? 0} down`}
               icon={<Activity size={15} />}
               tone="slate"
+              spark={spark("scaling")}
             />
             <KpiCard
               label="Mode"
@@ -265,6 +263,7 @@ export default function App() {
               sub="pod-ticks vs HPA"
               icon={<Server size={15} />}
               tone={sv && sv.pod_ticks_saved >= 0 ? "green" : "amber"}
+              spark={spark("podsSaved")}
             />
             <KpiCard
               label="Energy saved"
@@ -272,6 +271,7 @@ export default function App() {
               sub="@ 50 W / pod"
               icon={<Leaf size={15} />}
               tone={sv && sv.kwh >= 0 ? "green" : "amber"}
+              spark={spark("kwh")}
             />
             <KpiCard
               label="Cost saved"
@@ -279,6 +279,7 @@ export default function App() {
               sub="@ 175 Frw / kWh"
               icon={<Wallet size={15} />}
               tone={sv && sv.frw >= 0 ? "green" : "amber"}
+              spark={spark("frw")}
             />
             <KpiCard
               label="SLA breaches avoided"
@@ -286,11 +287,48 @@ export default function App() {
               sub="vs HPA over the day"
               icon={<ShieldCheck size={15} />}
               tone="slate"
+              spark={spark("breaches")}
             />
+          </div>
+        )}
+
+        {/* main: time series + decision */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="space-y-2 lg:col-span-2">
+            <LiveChart data={history} maxPods={config?.max_pods ?? 20} showHpa={!isLive} />
+            <p className="px-1 text-xs text-slate-500">
+              {isLive
+                ? "Live Kubernetes cluster: the agent reads real pod CPU and scales the deployment. To compare against the real HPA, use the Benchmark tab."
+                : "Simulation on a held-out real Alibaba trace. The RL agent and HPA each drive their own copy of the workload."}
+            </p>
+          </div>
+          <DecisionPanel s={state} mode={isLive ? mode : "autopilot"} live={isLive} />
+        </div>
+
+        {/* detail row: live → cluster + traffic + log; sim → HPA explainer + decision log */}
+        {isLive ? (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <ClusterInfoPanel info={cluster} />
+            <LoadControl status={load} onStart={startLoad} onStop={stopLoad} />
+            <EventLog events={events} />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <HpaHelp target={hpaTarget} />
+            <EventLog events={events} />
           </div>
         )}
         </>
         )}
+
+        {/* footer */}
+        <footer className="flex flex-wrap items-center justify-between gap-2 pt-2 text-[11px] text-slate-600">
+          <span>
+            Eco-Scale · {config?.agent ?? "PPO"} agent
+            {config && ` · run ${config.run} · min ${config.min_pods} / max ${config.max_pods} pods`}
+          </span>
+          <span>v0.6 — console</span>
+        </footer>
       </main>
     </div>
   );

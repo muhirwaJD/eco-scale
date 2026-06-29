@@ -5,11 +5,15 @@ export default {
     extend: {
       colors: {
         eco: {
-          green: "#2E7D32",
-          light: "#4CAF50",
-          amber: "#F59E0B",
-          red: "#EF4444",
+          green: "#22c55e",   // primary accent (brighter, modern)
+          light: "#4ade80",   // chart line / positive text
+          dark: "#16a34a",
+          amber: "#fbbf24",
+          red: "#f87171",     // HPA line / scale-down / danger
         },
+      },
+      boxShadow: {
+        glow: "0 0 0 1px rgba(34,197,94,0.35), 0 10px 30px -10px rgba(34,197,94,0.45)",
       },
     },
   },
