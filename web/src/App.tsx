@@ -155,7 +155,7 @@ export default function App() {
       <main className="mx-auto max-w-7xl space-y-4 p-6">
         {/* data source toggle + status badge */}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex rounded-xl border border-white/10 bg-white/5 p-1 text-xs font-medium">
+          <div className="flex rounded-xl border border-white/10 bg-white/5 p-1 text-sm font-medium">
             {([
               { key: "sim", label: "Simulation", enabled: true },
               { key: "live", label: "Live cluster", enabled: liveOk },
@@ -178,7 +178,7 @@ export default function App() {
           </div>
 
           <span
-            className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium ring-1 ${
+            className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium ring-1 ${
               isLive || isExp
                 ? "bg-eco-green/10 text-eco-light ring-eco-green/25"
                 : "bg-eco-amber/10 text-eco-amber ring-eco-amber/25"
@@ -197,11 +197,10 @@ export default function App() {
           </span>
         </div>
 
-        {error && (
-          <div className="rounded-lg border border-eco-red/40 bg-eco-red/10 px-4 py-3 text-sm text-eco-red">
+        {error && <div className="rounded-lg border border-eco-red/40 bg-eco-red/10 px-4 py-3 text-base text-eco-red">
             {error}
           </div>
-        )}
+        }
 
         {isExp && <ExperimentPanel />}
 
@@ -224,7 +223,7 @@ export default function App() {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="space-y-2 lg:col-span-2">
             <LiveChart data={history} maxPods={config?.max_pods ?? 20} showHpa={!isLive} />
-            <p className="px-1 text-xs text-slate-500">
+            <p className="px-1 text-sm text-slate-500">
               {isLive
                 ? "Live Kubernetes cluster: the agent reads real pod CPU and scales the deployment. To compare against the real HPA, use the Benchmark tab."
                 : "Simulation on a held-out real Alibaba trace. The RL agent and HPA each drive their own copy of the workload."}
@@ -322,7 +321,7 @@ export default function App() {
         )}
 
         {/* footer */}
-        <footer className="flex flex-wrap items-center justify-between gap-2 pt-2 text-[11px] text-slate-600">
+        <footer className="flex flex-wrap items-center justify-between gap-2 pt-2 text-sm text-slate-600">
           <span>
             Eco-Scale · {config?.agent ?? "PPO"} agent
             {config && ` · run ${config.run} · min ${config.min_pods} / max ${config.max_pods} pods`}

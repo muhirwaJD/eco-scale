@@ -34,7 +34,7 @@ export default function KpiCard({ label, value, sub, icon, tone = "slate", spark
       <div className="mt-3 text-3xl font-semibold tracking-tight tabular-nums text-white">
         {value}
       </div>
-      {sub && <div className="mt-1 text-xs text-slate-500">{sub}</div>}
+      {sub && <div className="mt-1 text-sm text-slate-500">{sub}</div>}
       {spark && spark.length > 1 && (
         <div className="mt-3">
           <Sparkline data={spark} color={sparkColor[tone]} height={28} />

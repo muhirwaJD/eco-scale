@@ -18,10 +18,10 @@ export default function Header({ config, mode, killed, live, onMode, onKill }: P
           <Activity size={20} strokeWidth={2.4} />
         </div>
         <div>
-          <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-white">
+          <h1 className="text-xl font-semibold leading-tight tracking-tight text-white">
             Eco-Scale Console
           </h1>
-          <p className="text-xs text-slate-400">
+          <p className="text-sm text-slate-400">
             RL autoscaler · agent{" "}
             <span className="font-medium text-eco-light">{config?.agent ?? "…"}</span>
             {config && ` · run ${config.run}`}
@@ -32,7 +32,7 @@ export default function Header({ config, mode, killed, live, onMode, onKill }: P
       {live && (
         <div className="flex items-center gap-3">
           {/* mode switch: recommend-only vs autopilot */}
-          <div className="flex rounded-xl border border-white/10 bg-white/5 p-1 text-xs">
+          <div className="flex rounded-xl border border-white/10 bg-white/5 p-1 text-sm">
             <button
               onClick={() => onMode("recommend")}
               className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-all ${
@@ -57,7 +57,7 @@ export default function Header({ config, mode, killed, live, onMode, onKill }: P
 
           <button
             onClick={onKill}
-            className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium transition-all ${
+            className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition-all ${
               killed
                 ? "border-eco-red/60 bg-eco-red/15 text-eco-red"
                 : "border-white/10 text-slate-300 hover:border-eco-red/60 hover:bg-eco-red/10 hover:text-eco-red"

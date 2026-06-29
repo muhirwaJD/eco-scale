@@ -43,7 +43,7 @@ export default function Controls({
 
       {/* speed is a simulation-only concept (live is paced by kubectl) */}
       {!isLive && (
-        <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-1 text-xs">
+        <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-1 text-sm">
           {SPEEDS.map((s) => (
             <button
               key={s.ms}
@@ -59,7 +59,7 @@ export default function Controls({
       )}
 
       {!isLive && (
-        <div className="ml-auto flex items-center gap-2 text-xs text-slate-400">
+        <div className="ml-auto flex items-center gap-2 text-sm text-slate-400">
           <span>Compare vs HPA target</span>
           <select
             value={hpaTarget}
@@ -75,13 +75,13 @@ export default function Controls({
       )}
 
       {isLive && (
-        <div className="ml-auto rounded-lg bg-white/5 px-3 py-1.5 text-xs text-slate-400 ring-1 ring-white/10">
+        <div className="ml-auto rounded-lg bg-white/5 px-3 py-1.5 text-sm text-slate-400 ring-1 ring-white/10">
           Agent is the only autoscaler
         </div>
       )}
 
       {!isLive && (
-        <div className="flex items-center gap-1.5 rounded-lg bg-white/5 px-3 py-1.5 text-xs tabular-nums text-slate-300 ring-1 ring-white/10">
+        <div className="flex items-center gap-1.5 rounded-lg bg-white/5 px-3 py-1.5 text-sm tabular-nums text-slate-300 ring-1 ring-white/10">
           <Clock size={13} className="text-slate-500" />
           day {hours}h / 24h
         </div>

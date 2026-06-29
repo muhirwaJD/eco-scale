@@ -30,7 +30,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl bg-white/[0.04] px-3 py-2 ring-1 ring-white/5">
       <div className="label">{label}</div>
-      <div className="mt-0.5 text-sm font-semibold tabular-nums text-slate-100">{value}</div>
+      <div className="mt-0.5 text-base font-semibold tabular-nums text-slate-100">{value}</div>
     </div>
   );
 }
@@ -45,7 +45,7 @@ export default function DecisionPanel({
   return (
     <div className="card flex flex-col gap-4 p-5">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-slate-100">Agent decision</h2>
+        <h2 className="text-base font-semibold text-slate-100">Agent decision</h2>
         <span className="label">PPO · interval 15s</span>
       </div>
 
@@ -53,15 +53,15 @@ export default function DecisionPanel({
       <div className={`flex items-center gap-3 rounded-xl px-4 py-3 ${ui.cls}`}>
         {ui.icon}
         <div>
-          <div className="text-base font-semibold">{ui.label}</div>
-          <div className="text-xs opacity-80">
+          <div className="text-lg font-semibold">{ui.label}</div>
+          <div className="text-sm opacity-80">
             {mode === "autopilot" ? "applied automatically" : "awaiting approval"}
           </div>
         </div>
       </div>
 
       {/* rationale (explainability) */}
-      <p className="text-sm leading-relaxed text-slate-300">{s.rl.rationale}</p>
+      <p className="text-base leading-relaxed text-slate-300">{s.rl.rationale}</p>
 
       {/* action preference bars: why not the others? */}
       {s.rl.probs && (
@@ -70,14 +70,14 @@ export default function DecisionPanel({
           <div className="space-y-2">
             {s.rl.probs.map((p, i) => (
               <div key={i} className="flex items-center gap-2.5">
-                <span className="w-9 text-xs font-medium text-slate-400">{PROB[i].label}</span>
+                <span className="w-9 text-sm font-medium text-slate-400">{PROB[i].label}</span>
                 <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
                   <div
                     className={`h-full rounded-full ${PROB[i].bar} transition-all duration-300`}
                     style={{ width: `${Math.round(p * 100)}%` }}
                   />
                 </div>
-                <span className="w-9 text-right text-xs font-medium tabular-nums text-slate-300">
+                <span className="w-10 text-right text-sm font-medium tabular-nums text-slate-300">
                   {Math.round(p * 100)}%
                 </span>
               </div>
