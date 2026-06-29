@@ -220,7 +220,20 @@ export default function App() {
           onHpaTarget={changeHpaTarget}
         />
 
-        {/* STAT ROW (top) — live shows the agent's own metrics; sim shows vs-HPA savings */}
+        {/* PRIORITY 1 — the live evidence: time series + the agent's decision */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="space-y-2 lg:col-span-2">
+            <LiveChart data={history} maxPods={config?.max_pods ?? 20} showHpa={!isLive} />
+            <p className="px-1 text-xs text-slate-500">
+              {isLive
+                ? "Live Kubernetes cluster: the agent reads real pod CPU and scales the deployment. To compare against the real HPA, use the Benchmark tab."
+                : "Simulation on a held-out real Alibaba trace. The RL agent and HPA each drive their own copy of the workload."}
+            </p>
+          </div>
+          <DecisionPanel s={state} mode={isLive ? mode : "autopilot"} live={isLive} />
+        </div>
+
+        {/* PRIORITY 2 — impact: live shows the agent's own metrics; sim shows vs-HPA savings */}
         {isLive ? (
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <KpiCard
@@ -292,20 +305,7 @@ export default function App() {
           </div>
         )}
 
-        {/* main: time series + decision */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="space-y-2 lg:col-span-2">
-            <LiveChart data={history} maxPods={config?.max_pods ?? 20} showHpa={!isLive} />
-            <p className="px-1 text-xs text-slate-500">
-              {isLive
-                ? "Live Kubernetes cluster: the agent reads real pod CPU and scales the deployment. To compare against the real HPA, use the Benchmark tab."
-                : "Simulation on a held-out real Alibaba trace. The RL agent and HPA each drive their own copy of the workload."}
-            </p>
-          </div>
-          <DecisionPanel s={state} mode={isLive ? mode : "autopilot"} live={isLive} />
-        </div>
-
-        {/* detail row: live → cluster + traffic + log; sim → HPA explainer + decision log */}
+        {/* PRIORITY 3 — context: live → cluster + traffic + log; sim → HPA explainer + decision log */}
         {isLive ? (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <ClusterInfoPanel info={cluster} />
