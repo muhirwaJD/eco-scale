@@ -1,4 +1,6 @@
-import type { ClusterInfo, Config, ExperimentStatus, LoadStatus, SimState } from "./types";
+import type {
+  ClusterInfo, Config, ExperimentStatus, LoadStatus, ModelInfo, Results, SimState,
+} from "./types";
 
 // In dev, Vite proxies /api -> http://localhost:8000 (see vite.config.ts).
 const BASE = import.meta.env.VITE_API_URL ?? "/api";
@@ -38,6 +40,16 @@ export const liveStep = (apply: boolean) =>
 
 export const liveInfo = () => jsonFetch<ClusterInfo>("/live/info");
 
+// ── kubectl contexts (real cluster selector) ─────────────────
+export const getContexts = () =>
+  jsonFetch<{ current: string; contexts: string[] }>("/contexts");
+
+export const useKubeContext = (context: string) =>
+  jsonFetch<{ ok: boolean; current?: string; error?: string }>("/contexts/use", {
+    method: "POST",
+    body: JSON.stringify({ context }),
+  });
+
 // ── UI-controllable load generator ───────────────────────────
 export const loadStart = (duration: number) =>
   jsonFetch<LoadStatus>("/live/load/start", {
@@ -60,3 +72,7 @@ export const experimentStop = () =>
 
 export const experimentStatus = () =>
   jsonFetch<ExperimentStatus>("/experiment/status");
+
+// ── results + model metadata ─────────────────────────────────
+export const getResults = () => jsonFetch<Results>("/results");
+export const getModel = () => jsonFetch<ModelInfo>("/model");

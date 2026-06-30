@@ -79,6 +79,22 @@ export interface ExpPoint {
   p95_ms: number;
 }
 
+export interface Results {
+  algorithms: { algorithm: string; runs: number; best_reward: number; mean_reward: number }[];
+  realcluster: {
+    rl_pods: number; rl_pods_sd: number;
+    hpa_pods: number; hpa_pods_sd: number;
+    rl_p95: number; hpa_p95: number;
+    pod_saving_pct: number;
+  } | null;
+}
+
+export interface ModelInfo {
+  metadata: Record<string, any>;
+  reward: { latency: number; energy: number; sla_breach: number; scaling: number; util_target: number };
+  env: { min_pods: number; max_pods: number; start_pods: number; pod_capacity: number };
+}
+
 export interface ExperimentStatus {
   state: "idle" | "running" | "done" | "error";
   phase: "rl" | "hpa" | null;

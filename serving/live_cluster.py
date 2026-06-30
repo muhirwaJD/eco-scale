@@ -25,12 +25,28 @@ ACTION_NAMES = {0: "scale_down", 1: "maintain", 2: "scale_up"}
 
 
 def _sh(cmd):
-    # Returns "" if kubectl is missing or the call fails (e.g. on a host with no
-    # cluster, like the public deploy) so the Live/Stage-2 tabs disable cleanly.
+    # Returns "" if kubectl is missing or the call fails (e.g. no cluster, or the
+    # selected context is unreachable) so the UI degrades cleanly. The timeout
+    # stops an unreachable context (e.g. a cloud cluster) from hanging the API.
     try:
-        return subprocess.run(cmd, capture_output=True, text=True).stdout.strip()
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=8).stdout.strip()
     except Exception:
         return ""
+
+
+def kube_contexts():
+    """List the real kubectl contexts + the current one."""
+    out = _sh(["kubectl", "config", "get-contexts", "-o", "name"])
+    names = [l.strip() for l in out.splitlines() if l.strip()]
+    return {"current": _sh(["kubectl", "config", "current-context"]), "contexts": names}
+
+
+def use_context(name):
+    """Switch the active kubectl context (only to a known context)."""
+    if name not in kube_contexts()["contexts"]:
+        return {"ok": False, "error": "unknown context"}
+    _sh(["kubectl", "config", "use-context", name])
+    return {"ok": True, "current": _sh(["kubectl", "config", "current-context"])}
 
 
 def cluster_available():
