@@ -50,8 +50,10 @@ is the most stable, DQN is sample-efficient but prone to instability (two
 configurations collapsed to ≈ −489), and REINFORCE has the highest variance (the
 no-baseline run collapsed). All three cluster near the demand-tracking ceiling
 (≈ −346), indicating the recalibrated reward generalizes across algorithms.
-See `outputs/training/convergence_comparison.png`, `outputs/training/stability_comparison.png`,
-`outputs/training/sensitivity_analysis.png`, and `outputs/training/summary_table.png`.
+See `outputs/training/learning_curves.png` (eval reward vs timesteps — PPO converges
+smoothly, DQN oscillates), `outputs/training/convergence_comparison.png`,
+`outputs/training/stability_comparison.png`, `outputs/training/sensitivity_analysis.png`,
+and `outputs/training/summary_table.png`.
 
 PPO and DQN are statistically comparable (overlapping error bars); PPO was
 retained as the deployed agent on the strength of its stability and its

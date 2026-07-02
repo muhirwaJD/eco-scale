@@ -126,13 +126,16 @@ variance-reduction role of the value baseline. This stability gap — not raw pe
 reason PPO was selected as the deployed agent.
 
 ### Convergence
-![Convergence Comparison](../outputs/training/convergence_comparison.png)
-DQN converges fastest per-step thanks to experience replay and off-policy reuse, but its curves are the
-noisiest. PPO converges more smoothly, collecting large on-policy rollouts (n_steps=2048) before each
-clipped update. REINFORCE is slowest, relying on high-variance Monte-Carlo returns. The sensitivity
-analysis (`../outputs/training/sensitivity_analysis.png`) shows the biggest risk factors were DQN's
-replay-buffer size and exploration schedule — notably, γ=0.95 did **not** hurt (PPO's lower-gamma run
-scored −340.41, among its best).
+![Training Learning Curves](../outputs/training/learning_curves.png)
+The learning curves (evaluation reward vs training timesteps, from the EvalCallback logs) make the
+stability difference visible: **PPO** rises quickly and settles into a tight band, whereas **DQN** is
+highly volatile — repeatedly crashing back toward −600 before recovering — despite its comparable final
+score. DQN reuses data off-policy so it moves fast per step but noisily; PPO collects large on-policy
+rollouts (n_steps=2048) before each clipped update, trading speed for smoothness. (REINFORCE is a custom
+non-SB3 agent without per-eval logs, so it is not shown here.) The sensitivity analysis
+(`../outputs/training/sensitivity_analysis.png`) shows the biggest risk factors were DQN's replay-buffer
+size and exploration schedule — notably, γ=0.95 did **not** hurt (PPO's lower-gamma run scored −340.41,
+among its best).
 
 ### Generalization
 Every model was evaluated on the **5 held-out test traces** it never saw during training. All generalized

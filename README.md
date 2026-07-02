@@ -180,6 +180,7 @@ python training/select_champion.py      # pick the champion + render figure
 python training/diagnose_champion.py    # does the champion track demand?
 python evaluation/evaluate_vs_hpa.py    # HEADLINE: RL vs HPA + paired t-test
 python utils/generate_plots.py          # cross-algorithm comparison figures
+python utils/plot_learning_curves.py    # training learning curves (eval reward vs timesteps)
 ```
 
 ## Project structure
