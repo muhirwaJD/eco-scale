@@ -104,7 +104,7 @@ matched, significance is assessed with a **paired t-test**.
   over-provisions, ~9 pods, without a service benefit).
 
 PPO outperforms HPA on the combined objective primarily by maintaining **lower
-p95 latency (0.72 vs 0.79) at comparable reliability** (`outputs/hpa_comparison/dqn_vs_hpa_comparison.png`).
+p95 latency (0.72 vs 0.79) at comparable reliability** (`outputs/simulation/agent_vs_hpa_comparison.png`).
 This is a service-quality win; it is not, by itself, an energy reduction versus a
 well-tuned HPA (HPA@70% runs fewer pods).
 
@@ -112,7 +112,7 @@ well-tuned HPA (HPA@70% runs fewer pods).
 
 Because HPA uses a single static utilization target, its energy/reliability
 trade-off depends entirely on that target. Sweeping it (`energy_vs_hpa.py`,
-`outputs/hpa_comparison/energy_frontier.png`):
+`outputs/simulation/energy_frontier.png`):
 
 | Controller | Reward | Mean pods | Waste | Breach % |
 |---|---|---|---|---|
