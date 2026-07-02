@@ -1,13 +1,3 @@
----
-title: Eco-Scale Console
-emoji: 📈
-colorFrom: green
-colorTo: gray
-sdk: docker
-app_port: 7860
-pinned: false
----
-
 # Eco-Scale — Predictive Kubernetes Autoscaling with Deep RL
 
 Reinforcement-learning autoscaler for Kubernetes, trained on **real Alibaba 2018 cluster traces**
@@ -30,7 +20,7 @@ down** a workload. It ships in three usable forms:
 
 | Form | What it does | Entry point |
 |---|---|---|
-| **Web console** (primary) | React control plane: watch the agent decide on a recorded trace, drive a **real cluster** live, or run an A/B benchmark vs native HPA | `uvicorn serving.api:app` (serves the built `web/` console + API on one port) |
+| **Web console** (primary) | React control plane: watch the agent decide on a recorded trace, drive a **real cluster** live, or run a Benchmark vs native HPA | `uvicorn serving.api:app` (serves the built `web/` console + API on one port) |
 | **Decision API** | `POST /predict` returns a scaling action for a given cluster state | `uvicorn serving.api:app` |
 | **Cluster controller** | Headless RL agent driving a real Deployment via `kubectl scale` | `python deploy/controller/rl_controller.py` |
 
@@ -51,7 +41,7 @@ Pick the row that matches what you want. Most people only need the first one.
 | **Reproduce the research** | [Reproduce](#reproduce-the-research) | full `requirements.txt` (adds training deps) |
 
 > The public link runs in **Simulation** only — it replays a real Alibaba trace (RL vs HPA) with no
-> cluster attached. The **Live cluster** and **A/B** modes need a real cluster, so they only work when
+> cluster attached. The **Live cluster** and **Benchmark** modes need a real cluster, so they only work when
 > you run it locally, next.
 
 ### Run locally against your own cluster
@@ -93,7 +83,7 @@ kubectl apply -f deploy/k8s/deployment.yaml     # creates the eco-sample-app Dep
 Then, in the console:
 - **Live cluster** → *Recommend-only* (watch the agent), *Autopilot* (let it `kubectl scale` for real),
   or the *Kill switch* to hand control back instantly.
-- **Real A/B (Stage-2)** → runs the RL agent and native HPA back-to-back under the same load, and
+- **Benchmark** → runs the RL agent and native HPA back-to-back under the same load, and
   reports pods + latency for each.
 
 **Just the decision API (no UI):** skip step 2; `uvicorn serving.api:app` exposes interactive docs at
@@ -106,9 +96,9 @@ curl -X POST http://localhost:8000/predict \
 # -> {"action":2,"action_name":"scale_up", ...}
 ```
 
-### Real-cluster A/B benchmark from the command line
+### Real-cluster benchmark from the command line
 
-The same experiment the console's A/B mode runs, scriptable and reproducible:
+The same experiment the console's Benchmark mode runs, scriptable and reproducible:
 
 ```bash
 docker build -t eco-sample-app:latest deploy/app
@@ -127,10 +117,10 @@ python deploy/compare_realcluster.py                    # -> outputs/realcluster
 <summary><b>Other interfaces & deployment (optional)</b></summary>
 
 - **Docker (simulation only):** `docker compose up` runs the console in a container on
-  `http://localhost:8000`. Note that **Live-cluster and A/B modes won't work** this way — the container
+  `http://localhost:8000`. Note that **Live-cluster and Benchmark modes won't work** this way — the container
   can't reach your kubeconfig. Use the host `uvicorn` path above for real-cluster use.
 - **Streamlit research view:** `streamlit run serving/dashboard.py` — an older, simpler dashboard kept
-  for offline analysis (needs the full `requirements.txt`).
+  for offline analysis (works with the serving deps above).
 - **Deploy the console publicly (Hugging Face Space):** see
   [`deploy/huggingface/DEPLOY.md`](deploy/huggingface/DEPLOY.md).
 
@@ -150,7 +140,7 @@ python -m pytest
 python tests/benchmark_performance.py
 
 # Same benchmark inside the container (different software spec)
-docker compose run --rm api python tests/benchmark_performance.py
+docker compose run --rm app python tests/benchmark_performance.py
 
 # Comparative test: RL vs HPA on held-out traces + paired t-test
 python evaluation/evaluate_vs_hpa.py
@@ -197,32 +187,43 @@ python utils/generate_plots.py          # cross-algorithm comparison figures
 ```
 eco-scale/
 ├── environment/custom_env.py       # Trace-driven Gymnasium env (reward, dynamics)
-├── data/                           # 13 real Alibaba traces + stratified split
-├── training/                       # DQN/PPO/REINFORCE sweeps, reward design, champion selection
+├── data/                           # 13 real Alibaba traces + stratified split (make_split.py, split.json)
+├── training/                       # DQN/PPO/REINFORCE sweeps, reward design, champion selection, diagnostics
 ├── baselines/hpa_controller.py     # realistic Kubernetes HPA baseline
-├── evaluation/                     # RL-vs-HPA comparison, energy frontier, cost-benefit
-├── serving/                        # inference engine, FastAPI API, live sim, Streamlit view
-│   ├── inference_engine.py
-│   ├── api.py                      # serves the React console (web/dist) + all endpoints
-│   ├── live_cluster.py             # reads/scales a real cluster via kubectl
-│   └── dashboard.py                # older Streamlit research view
+├── evaluation/                     # evaluate_vs_hpa · energy_vs_hpa · cost_benefit
+├── serving/                        # inference + API + live cluster + simulation
+│   ├── inference_engine.py         # loads the champion, normalizes obs, returns a decision
+│   ├── api.py                      # FastAPI: serves the React console (web/dist) + all endpoints
+│   ├── simulation.py               # recorded-trace replay (RL vs HPA), used by Simulation mode
+│   ├── live_cluster.py             # reads/scales a REAL cluster via kubectl (Live mode)
+│   ├── experiment.py               # sequential RL-vs-HPA Benchmark runner
+│   ├── load_generator.py           # UI-controllable traffic wave
+│   ├── results_service.py          # reads pre-computed results + champion metadata (/results, /model)
+│   └── dashboard.py                # older Streamlit research view (optional)
 ├── web/                            # React + Vite control-plane console (the primary UI)
-├── deploy/                         # real-cluster validation
+│   └── src/
+│       ├── sections/               # Dashboards · Decisions · Results · Model
+│       ├── components/eco/         # shared UI primitives + sidebar
+│       ├── api.ts, types.ts        # typed client for the FastAPI endpoints
+│       └── App.tsx                 # console shell (mode switch, cluster selector)
+├── deploy/                         # real-cluster validation + public deploy
 │   ├── app/                        # CPU-bound sample app + Dockerfile
 │   ├── k8s/                        # Deployment, Service, HPA manifests
-│   ├── controller/rl_controller.py # RL agent driving a live cluster
-│   ├── huggingface/                # public-console deploy notes
-│   └── run_experiment.py           # load generator + experiment runner
-├── tests/                          # unit + integration tests, performance benchmark
-├── utils/                          # champion auto-detection, plotting helpers
+│   ├── controller/rl_controller.py # headless RL agent driving a live cluster
+│   ├── run_experiment.py           # load generator + experiment runner
+│   ├── compare_realcluster.py      # aggregate one RL-vs-HPA run
+│   ├── repeat_realcluster.py       # repeat runs → mean ± std
+│   └── huggingface/                # public-console deploy notes (DEPLOY.md)
+├── tests/                          # unit + integration tests + performance benchmark
+├── utils/                          # champion auto-detection, agents, plotting helpers
 ├── models/                         # eco_scale_best.zip + champion_metadata.json (deployed agent)
-├── outputs/                        # results: training / hpa_comparison / realcluster
+├── outputs/                        # results: training / simulation / realcluster / data
 ├── docs/                           # results chapter, technical report, architecture
 ├── Dockerfile · docker-compose.yml # serving container (console + API on one port)
 ├── requirements.txt                # full: training + eval + serving
 └── requirements-serving.txt        # lean: just what the console/API need
 ```
-*(`logs/`, `models/dqn/`, `models/pg/` hold training churn and are gitignored.)*
+*(`venv/`, `logs/`, `models/dqn/`, `models/pg/`, `web/node_modules/`, `web/dist/` are gitignored.)*
 
 ---
 
