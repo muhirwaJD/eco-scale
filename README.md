@@ -18,7 +18,7 @@ latency against energy use.
 Three algorithms are compared (**DQN**, **PPO**, **REINFORCE**); **PPO** is the deployed agent.
 
 - 🌐 **Live console:** https://muhirwa56-eco-scale-console.hf.space/ (Simulation mode — no setup needed)
-- 🎬 **Demo video:** https://www.veed.io/view/8d8e28a2-8dd1-4ba3-9695-cf01fa8be08e?source=Dashboard&panel=share
+- 🎬 **Demo video:** https://www.veed.io/view/47da68ba-b65a-4497-9049-90ceb36d9bfe?source=editor&panel=share
 
 ---
 
@@ -28,13 +28,11 @@ Eco-Scale is a drop-in alternative to Kubernetes HPA. Instead of a static CPU th
 trained RL policy to decide — every interval — whether to **scale up**, **maintain**, or **scale
 down** a workload. It ships in three usable forms:
 
-| Form | What it does | How to run |
+| Form | What it does | Entry point |
 |---|---|---|
-| **Web dashboard** | Browser UI: set cluster state → see the agent's decision; view RL-vs-HPA results | `streamlit run serving/dashboard.py` |
+| **Web console** (primary) | React control plane: watch the agent decide on a recorded trace, drive a **real cluster** live, or run an A/B benchmark vs native HPA | `uvicorn serving.api:app` (serves the built `web/` console + API on one port) |
 | **Decision API** | `POST /predict` returns a scaling action for a given cluster state | `uvicorn serving.api:app` |
-| **Cluster controller** | Drives a real Kubernetes Deployment via `kubectl scale` | `python deploy/controller/rl_controller.py` |
-
-## Problem
+| **Cluster controller** | Headless RL agent driving a real Deployment via `kubectl scale` | `python deploy/controller/rl_controller.py` |
 
 Standard Kubernetes autoscaling (HPA) is reactive — it scales only after thresholds are breached,
 causing latency spikes and over-provisioning. Eco-Scale learns a scaling policy from historical
@@ -42,68 +40,107 @@ traffic to manage the latency-vs-energy trade-off.
 
 ---
 
-## Quick start
+## Run it
+
+Pick the row that matches what you want. Most people only need the first one.
+
+| I want to… | What to do | What I need installed |
+|---|---|---|
+| **Just see it work** | Open the [live console](https://muhirwa56-eco-scale-console.hf.space/) | nothing (Simulation mode only) |
+| **Run it against my own cluster** | [Run locally](#run-locally-against-your-own-cluster) | Python 3.12 · Node 20+ · `kubectl` + metrics-server |
+| **Reproduce the research** | [Reproduce](#reproduce-the-research) | full `requirements.txt` (adds training deps) |
+
+> The public link runs in **Simulation** only — it replays a real Alibaba trace (RL vs HPA) with no
+> cluster attached. The **Live cluster** and **A/B** modes need a real cluster, so they only work when
+> you run it locally, next.
+
+### Run locally against your own cluster
+
+This is the real product: the console drives a **live** Kubernetes cluster. It runs on your **host**
+(not in a container) so it inherits your `kubectl` access — a container wouldn't see your cluster.
+
+**Prerequisites**
+- Python 3.12 and Node 20+
+- A Kubernetes cluster reachable via `kubectl` (OrbStack / minikube / kind / EKS …)
+- **metrics-server** installed in that cluster (the agent reads live pod CPU from `kubectl top`)
 
 ```bash
 git clone https://github.com/muhirwaJD/eco-scale.git
 cd eco-scale
+
+# 1. serving dependencies (lean — no training/eval extras)
 python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-serving.txt
+
+# 2. build the web console (the API serves it from web/dist).
+#    VITE_API_URL="" makes the console call the API on the SAME origin — required,
+#    or it will look for the API under /api and every request 404s.
+cd web && npm ci && VITE_API_URL="" npm run build && cd ..
+
+# 3. run API + console ON YOUR HOST, so it can reach your cluster
+uvicorn serving.api:app --port 8000
+#    → open http://localhost:8000
 ```
 
-**Run the dashboard (the product):**
+**Give it a workload to manage.** Live mode targets a Deployment named `eco-sample-app` in your
+current `kubectl` context. Deploy the bundled CPU-bound sample app if you don't already have one:
+
 ```bash
-streamlit run serving/dashboard.py        # opens http://localhost:8501
+docker build -t eco-sample-app:latest deploy/app
+kubectl apply -f deploy/k8s/deployment.yaml     # creates the eco-sample-app Deployment
 ```
 
-**Run the decision API:**
+Then, in the console:
+- **Live cluster** → *Recommend-only* (watch the agent), *Autopilot* (let it `kubectl scale` for real),
+  or the *Kill switch* to hand control back instantly.
+- **Real A/B (Stage-2)** → runs the RL agent and native HPA back-to-back under the same load, and
+  reports pods + latency for each.
+
+**Just the decision API (no UI):** skip step 2; `uvicorn serving.api:app` exposes interactive docs at
+`http://localhost:8000/docs`.
+
 ```bash
-uvicorn serving.api:app --reload          # docs at http://localhost:8000/docs
 curl -X POST http://localhost:8000/predict \
   -H "Content-Type: application/json" \
   -d '{"cpu_util":0.9,"pods":3,"queue_depth":900,"day_progress":0.5}'
 # -> {"action":2,"action_name":"scale_up", ...}
 ```
 
----
+### Real-cluster A/B benchmark from the command line
 
-## Deployment
+The same experiment the console's A/B mode runs, scriptable and reproducible:
 
-### Option A — Docker (one command, runs API + dashboard together)
 ```bash
-docker compose up --build
-# API:       http://localhost:8000/docs
-# Dashboard: http://localhost:8501
-```
-
-### Option B — Streamlit Community Cloud (public link)
-1. Push this repo to GitHub.
-2. Go to [share.streamlit.io](https://share.streamlit.io) → **New app**.
-3. Pick the repo, set **Main file path** to `serving/dashboard.py`, and Deploy.
-4. The model (`models/eco_scale_best.zip`) and figures (`outputs/`) are committed, so it runs as-is.
-5. Paste the resulting URL at the top of this README.
-
-### Option C — Real Kubernetes cluster (the controller)
-```bash
-# 1. build the sample app, then deploy it
 docker build -t eco-sample-app:latest deploy/app
 kubectl apply -f deploy/k8s/deployment.yaml
 
-# 2a. baseline: let native HPA drive it
-kubectl apply -f deploy/k8s/hpa.yaml
+kubectl apply -f deploy/k8s/hpa.yaml                    # baseline: let native HPA drive it
 python deploy/run_experiment.py --mode hpa --duration 300
 
-# 2b. OR: let the RL agent drive it (delete the HPA first)
-kubectl delete -f deploy/k8s/hpa.yaml
-python deploy/run_experiment.py --mode rl --duration 300
+kubectl delete -f deploy/k8s/hpa.yaml                   # then let the RL agent drive it
+python deploy/run_experiment.py --mode rl  --duration 300
 
-# 3. compare the two runs
-python deploy/compare_realcluster.py        # -> outputs/realcluster/
+python deploy/compare_realcluster.py                    # -> outputs/realcluster/
 ```
+
+<details>
+<summary><b>Other interfaces & deployment (optional)</b></summary>
+
+- **Docker (simulation only):** `docker compose up` runs the console in a container on
+  `http://localhost:8000`. Note that **Live-cluster and A/B modes won't work** this way — the container
+  can't reach your kubeconfig. Use the host `uvicorn` path above for real-cluster use.
+- **Streamlit research view:** `streamlit run serving/dashboard.py` — an older, simpler dashboard kept
+  for offline analysis (needs the full `requirements.txt`).
+- **Deploy the console publicly (Hugging Face Space):** see
+  [`deploy/huggingface/DEPLOY.md`](deploy/huggingface/DEPLOY.md).
+
+</details>
 
 ---
 
 ## Testing
+
+Tests use pytest/httpx from the full requirements: `pip install -r requirements.txt`.
 
 ```bash
 # Unit + integration tests (env, HPA, inference engine, API) — 43 tests
@@ -139,6 +176,9 @@ python data/make_split.py        # regenerate data/split.json from data/traces/
 
 ## Reproduce the research
 
+Training and evaluation need the **full** dependency set: `pip install -r requirements.txt`
+(adds CPU torch-training, scipy, tensorboard on top of the serving deps).
+
 ```bash
 # Train (10-run hyperparameter sweep per algorithm)
 python training/dqn_training.py
@@ -161,22 +201,26 @@ eco-scale/
 ├── training/                       # DQN/PPO/REINFORCE sweeps, reward design, champion selection
 ├── baselines/hpa_controller.py     # realistic Kubernetes HPA baseline
 ├── evaluation/                     # RL-vs-HPA comparison, energy frontier, cost-benefit
-├── serving/                        # inference engine, FastAPI API, Streamlit dashboard
+├── serving/                        # inference engine, FastAPI API, live sim, Streamlit view
 │   ├── inference_engine.py
-│   ├── api.py
-│   └── dashboard.py
+│   ├── api.py                      # serves the React console (web/dist) + all endpoints
+│   ├── live_cluster.py             # reads/scales a real cluster via kubectl
+│   └── dashboard.py                # older Streamlit research view
+├── web/                            # React + Vite control-plane console (the primary UI)
 ├── deploy/                         # real-cluster validation
 │   ├── app/                        # CPU-bound sample app + Dockerfile
 │   ├── k8s/                        # Deployment, Service, HPA manifests
 │   ├── controller/rl_controller.py # RL agent driving a live cluster
+│   ├── huggingface/                # public-console deploy notes
 │   └── run_experiment.py           # load generator + experiment runner
 ├── tests/                          # unit + integration tests, performance benchmark
 ├── utils/                          # champion auto-detection, plotting helpers
 ├── models/                         # eco_scale_best.zip + champion_metadata.json (deployed agent)
 ├── outputs/                        # results: training / hpa_comparison / realcluster
 ├── docs/                           # results chapter, technical report, architecture
-├── Dockerfile · docker-compose.yml # serving container
-└── requirements.txt
+├── Dockerfile · docker-compose.yml # serving container (console + API on one port)
+├── requirements.txt                # full: training + eval + serving
+└── requirements-serving.txt        # lean: just what the console/API need
 ```
 *(`logs/`, `models/dqn/`, `models/pg/` hold training churn and are gitignored.)*
 
