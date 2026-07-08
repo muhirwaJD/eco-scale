@@ -1,0 +1,4 @@
+variant,best_seed,mean_reward_train,std_reward_train
+oracle,0,-343.93,8.93
+trend,1,-346.34,9.45
+forecast,1,-346.75,11.79
