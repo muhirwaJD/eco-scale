@@ -7,7 +7,7 @@ latency against energy use.
 
 Three algorithms are compared (**DQN**, **PPO**, **REINFORCE**); **PPO** is the deployed agent.
 
-- 🌐 **Live console:** https://muhirwa56-eco-scale-console.hf.space/ (Simulation mode — no setup needed)
+- 🌐 **Live console:** https://eco-scale-blwp.onrender.com/ (Simulation mode — no setup needed)
 - 🎬 **Demo video:** https://www.veed.io/view/47da68ba-b65a-4497-9049-90ceb36d9bfe?source=editor&panel=share
 
 ---
