@@ -36,7 +36,7 @@ Pick the row that matches what you want. Most people only need the first one.
 
 | I want to… | What to do | What I need installed |
 |---|---|---|
-| **Just see it work** | Open the [live console](https://muhirwa56-eco-scale-console.hf.space/) | nothing (Simulation mode only) |
+| **Just see it work** | Open the [live console](https://eco-scale-blwp.onrender.com/) | nothing (Simulation mode only) |
 | **Run it against my own cluster** | [Run locally](#run-locally-against-your-own-cluster) | Python 3.12 · Node 20+ · `kubectl` + metrics-server |
 | **Reproduce the research** | [Reproduce](#reproduce-the-research) | full `requirements.txt` (adds training deps) |
 
