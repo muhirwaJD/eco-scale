@@ -244,8 +244,8 @@ function SimulationView({ maxPods, agentTarget }: { maxPods: number; agentTarget
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat tone="positive" label="Pods saved (cumulative)" value={sv ? sv.pod_ticks_saved.toFixed(0) : 0} sub="pod-intervals vs HPA" icon={<TrendingDown className="h-4 w-4" />} />
+      <div className="grid grid-cols-4 gap-4 lg:grid-cols-4">
+        <Stat tone="positive" label="Pods saved" value={sv ? sv.pod_ticks_saved.toFixed(0) : 0} sub="pod-intervals vs HPA" icon={<TrendingDown className="h-4 w-4" />} />
         <Stat tone="positive" label="Energy saved" value={`${sv ? sv.kwh.toFixed(2) : "0.00"} kWh`} sub="@ 50 W / pod" icon={<Leaf className="h-4 w-4" />} />
         <Stat tone="positive" label="Cost saved" value={`${sv ? sv.frw.toFixed(0) : 0} Frw`} sub="@ 175 Frw / kWh" icon={<Coins className="h-4 w-4" />} />
         <Stat tone="positive" label="SLA breaches avoided" value={sv ? sv.breaches_avoided : 0} sub="p95 < 1.0 vs HPA" icon={<ShieldCheck className="h-4 w-4" />} />
