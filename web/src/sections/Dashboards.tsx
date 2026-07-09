@@ -8,6 +8,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, Pill, Stat, LegendDot, MiniStat, ProbBar, ActionBadge, type Action } from "@/components/eco/primitives";
+import { VariableBar } from "@/components/eco/time-range";
+
+type Var = { key: string; value: string; options: string[] };
 import type { ClusterInfo, Config, ExperimentStatus, LoadStatus, SimState } from "@/types";
 import {
   simReset, simStep, liveReset, liveStep, liveInfo, loadStart, loadStop, loadStatus,
@@ -109,10 +112,15 @@ const MODES: { id: Mode; label: string; pill: React.ReactNode }[] = [
   { id: "ab", label: "Benchmark", pill: <Pill tone="agent"><Radio className="h-3 w-3" /> BENCHMARK — agent vs native Kubernetes HPA</Pill> },
 ];
 
-function ModeSwitcher({ mode, setMode, liveOk }: { mode: Mode; setMode: (m: Mode) => void; liveOk: boolean }) {
+function ModeSwitcher({ mode, setMode, liveOk, vars, onVarChange }: {
+  mode: Mode; setMode: (m: Mode) => void; liveOk: boolean;
+  vars: Var[]; onVarChange: (key: string, value: string) => void;
+}) {
   const active = MODES.find((m) => m.id === mode)!;
+  // cluster/namespace/deployment only affect the real cluster — hide in Simulation.
+  const showFilters = mode !== "sim";
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="flex flex-wrap items-center gap-3">
       <div className="inline-flex rounded-xl border border-border bg-card p-1">
         {MODES.map((m) => {
           const disabled = m.id !== "sim" && !liveOk;
@@ -127,7 +135,9 @@ function ModeSwitcher({ mode, setMode, liveOk }: { mode: Mode; setMode: (m: Mode
           );
         })}
       </div>
-      {active.pill}
+      {showFilters && <span className="hidden h-6 w-px bg-border sm:block" />}
+      {showFilters && <VariableBar vars={vars} onChange={onVarChange} />}
+      <span className="ml-auto">{active.pill}</span>
     </div>
   );
 }
@@ -528,12 +538,13 @@ function ABResults({ st }: { st: ExperimentStatus }) {
   );
 }
 
-export default function DashboardsSection({ mode, setMode, liveOk, apply, config }: {
+export default function DashboardsSection({ mode, setMode, liveOk, apply, config, vars, onVarChange }: {
   mode: Mode; setMode: (m: Mode) => void; liveOk: boolean; apply: boolean; config: Config | null;
+  vars: Var[]; onVarChange: (key: string, value: string) => void;
 }) {
   return (
     <>
-      <ModeSwitcher mode={mode} setMode={setMode} liveOk={liveOk} />
+      <ModeSwitcher mode={mode} setMode={setMode} liveOk={liveOk} vars={vars} onVarChange={onVarChange} />
       <div className="mt-6">
         {mode === "sim" && <SimulationView maxPods={config?.max_pods ?? 20} agentTarget={config?.util_target} />}
         {mode === "live" && <LiveView apply={apply} />}

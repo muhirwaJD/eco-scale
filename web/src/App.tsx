@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Activity, Power } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sidebar, type Section } from "@/components/eco/sidebar";
-import { VariableBar } from "@/components/eco/time-range";
 import DashboardsSection, { type Mode } from "@/sections/Dashboards";
 import DecisionsSection from "@/sections/Decisions";
 import ResultsSection from "@/sections/Results";
@@ -51,11 +50,11 @@ export default function App() {
             { key: "deployment", value: "—", options: ["—"] },
           ]);
         });
-    }).catch(() => {});
+    }).catch(() => { });
   };
 
   useEffect(() => {
-    getConfig().then(setConfig).catch(() => {});
+    getConfig().then(setConfig).catch(() => { });
     getContexts()
       .then((c) => {
         if (c.contexts.length) refreshCluster(c.contexts, c.current);
@@ -70,7 +69,7 @@ export default function App() {
       useKubeContext(value)
         .then(() => getContexts())
         .then((c) => refreshCluster(c.contexts, c.current))
-        .catch(() => {});
+        .catch(() => { });
     }
   };
 
@@ -82,22 +81,8 @@ export default function App() {
         <Sidebar section={section} setSection={setSection} agent={config?.agent} run={config?.run} />
         <div className="flex min-w-0 flex-1 flex-col">
           {/* top bar */}
-          <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-xl">
-            <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-3">
-              <div className="flex items-center gap-3">
-                <div className="relative grid h-9 w-9 place-items-center rounded-xl bg-agent/15 ring-1 ring-agent/30">
-                  <Activity className="h-4 w-4 text-agent" />
-                  <span className="pulse-dot absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-agent" />
-                </div>
-                <div>
-                  <h1 className="text-[15px] font-semibold leading-none tracking-tight">Eco-Scale Console</h1>
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    RL autoscaler · agent <span className="text-agent">{config?.agent ?? "PPO"}</span>
-                    {config && ` (run ${config.run})`}
-                  </p>
-                </div>
-              </div>
-
+          <header className="sticky top-0 z-30 border-border bg-background/85 backdrop-blur-xl">
+            <div className="flex max-w-[1400px] items-end justify-end px-6 py-3">
               {liveControls && (
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5">
@@ -124,26 +109,17 @@ export default function App() {
           </header>
 
           <main className="mx-auto w-full max-w-[1400px] flex-1 px-6 py-6">
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-semibold tracking-tight">{TITLE[section].h}</h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">{TITLE[section].sub}</p>
-              </div>
-            </div>
 
             {section === "dashboards" && (
-              <>
-                <div className="mb-4">
-                  <VariableBar vars={vars} onChange={onVarChange} />
-                </div>
-                <DashboardsSection
-                  mode={mode}
-                  setMode={setMode}
-                  liveOk={liveOk}
-                  apply={autopilot && !killed}
-                  config={config}
-                />
-              </>
+              <DashboardsSection
+                mode={mode}
+                setMode={setMode}
+                liveOk={liveOk}
+                apply={autopilot && !killed}
+                config={config}
+                vars={vars}
+                onVarChange={onVarChange}
+              />
             )}
             {section === "decisions" && <DecisionsSection />}
             {section === "results" && <ResultsSection />}

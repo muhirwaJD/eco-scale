@@ -1,4 +1,4 @@
-import { LayoutDashboard, ScrollText, BarChart3, Cpu, Activity } from "lucide-react";
+import { LayoutDashboard, ScrollText, BarChart3, Cpu, Leaf } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type Section = "dashboards" | "decisions" | "results" | "model";
@@ -24,8 +24,9 @@ export function Sidebar({
   return (
     <aside className="sticky top-0 hidden h-screen w-[220px] shrink-0 flex-col border-r border-border bg-card/40 px-3 py-4 lg:flex">
       <div className="mb-6 flex items-center gap-2.5 px-2">
-        <div className="grid h-8 w-8 place-items-center rounded-lg bg-agent/15 ring-1 ring-agent/30">
-          <Activity className="h-4 w-4 text-agent" />
+        <div className="relative grid h-8 w-8 place-items-center rounded-lg bg-agent/15 ring-1 ring-agent/30">
+          <Leaf className="h-4 w-4 text-agent" />
+          <span className="pulse-dot absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-agent" />
         </div>
         <div>
           <div className="text-[13px] font-semibold leading-none">Eco-Scale</div>
