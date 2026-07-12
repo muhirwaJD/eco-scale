@@ -8,6 +8,8 @@ latency against energy use.
 Three algorithms are compared (**DQN**, **PPO**, **REINFORCE**); **PPO** is the deployed agent.
 
 - 🌐 **Live console:** https://eco-scale-blwp.onrender.com/ (Simulation mode — no setup needed)
+  > ⏳ **Please give it 1–2 minutes on the first visit.** It runs on Render's free tier, which spins the
+  > service down when idle and cold-starts it on the next request — so the first load is slow, then it's instant.
 - 🎬 **Demo video:** https://www.veed.io/view/47da68ba-b65a-4497-9049-90ceb36d9bfe?source=editor&panel=share
 
 ---
@@ -181,6 +183,11 @@ python training/diagnose_champion.py    # does the champion track demand?
 python evaluation/evaluate_vs_hpa.py    # HEADLINE: RL vs HPA + paired t-test
 python utils/generate_plots.py          # cross-algorithm comparison figures
 python utils/plot_learning_curves.py    # training learning curves (eval reward vs timesteps)
+python utils/plot_training_diagnostics.py  # PPO/DQN loss + entropy + ε-decay
+
+# Predictive extension — does anticipation beat reaction? (tested: no, see Chapter 4 §4.6.1)
+python training/predictive_training.py   # train oracle/trend/forecast variants (new files, champion untouched)
+python evaluation/evaluate_predictive.py # champion vs predictive vs HPA on held-out traces
 ```
 
 ## Project structure

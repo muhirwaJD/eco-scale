@@ -130,9 +130,41 @@ HPA's tuning curve near a well-tuned 65% target.
 
 **Honest limit.** PPO does **not** beat a perfectly-tuned HPA@70% on pure energy
 (7.29 vs 8.03 pods). The value of the learned policy is that it lands on a good
-operating point automatically and wins on the combined objective; surpassing the
-tuned frontier on energy would require a predictive (look-ahead) state feature so
-the agent can pre-scale before peaks. This is identified as future work.
+operating point automatically and wins on the combined objective. One might expect
+that surpassing the tuned frontier on energy needs a predictive (look-ahead) state
+feature so the agent can pre-scale before peaks — so we tested exactly that (§4.6.1).
+
+### 4.6.1 Testing the Predictive Hypothesis
+
+To check whether anticipation could close the energy gap, we extended the champion
+with **one extra observation** (same PPO config, so any change is attributable to the
+feature, not retuning) in three variants:
+
+- **trend** — causal slope of recent load (deployable live);
+- **forecast** — causal Holt (level + trend) projection 6 steps ahead (deployable live);
+- **oracle** — the *true* peak load over the next 6 steps (perfect foresight; an upper
+  bound, not deployable).
+
+Each was trained with 3 seeds (best kept) and evaluated on the 5 held-out test traces
+(50 paired episodes), against the reactive champion:
+
+| Controller | Reward | Breach % | Waste | Mean pods |
+|---|---|---|---|---|
+| **Champion (reactive)** | **−340.19** | 0.22 | 0.050 | 8.03 |
+| Oracle (perfect foresight) | −342.66 | 0.43 | 0.043 | 7.80 |
+| Trend | −342.16 | 0.24 | 0.065 | 8.35 |
+| Forecast | −341.51 | 0.22 | 0.058 | 8.20 |
+
+**Result: anticipation does not help in this environment.** All three variants are
+*significantly worse* than the reactive champion on the combined objective (paired
+t-tests, all **p < 0.0001**). Decisively, even the **oracle** — with perfect knowledge
+of future load — loses: it runs marginally leaner (7.80 vs 8.03 pods) but roughly
+*doubles* SLA breaches (0.43% vs 0.22%), a net loss under the reward. At 5-minute
+control granularity with ±1-pod steps and gradually varying daily load, reacting to
+current load is already near-optimal; look-ahead offers no usable advantage, and the
+leaner operating point it tempts the agent toward costs reliability. The reactive
+champion is therefore retained. (Figure `outputs/simulation/predictive_comparison.png`;
+reproduce with `python evaluation/evaluate_predictive.py`.)
 
 ## 4.7 Real-Cluster Validation (Stage 2)
 
@@ -246,6 +278,10 @@ multi-node, unsaturated study (with Prometheus and Locust) remains future work.
 5. **Methodological contribution:** an over-provisioning failure caused by reward
    misspecification was diagnosed and corrected via offline reward validation
    before training — a reusable safeguard.
+6. **Anticipation was tested and rejected:** adding look-ahead features
+   (trend/forecast/oracle) did not beat the reactive champion — even a
+   perfect-foresight oracle lost (Section 4.6.1). At this control granularity,
+   reaction is already near-optimal, so the reactive policy is retained.
 
 **Threats to validity.** Results are from a simulated environment where latency
 is modeled as clipped utilization; real systems show a non-linear latency curve.

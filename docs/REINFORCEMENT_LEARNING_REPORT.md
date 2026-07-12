@@ -137,11 +137,27 @@ non-SB3 agent without per-eval logs, so it is not shown here.) The sensitivity a
 size and exploration schedule — notably, γ=0.95 did **not** hurt (PPO's lower-gamma run scored −340.41,
 among its best).
 
+### Training Diagnostics
+![Training Diagnostics](../outputs/training/training_diagnostics.png)
+The optimizer-level metrics confirm healthy training: PPO's **value loss** collapses (307 → ~9) as the
+critic learns the return, its **policy-gradient loss** settles toward zero, and its **entropy** drifts up
+(less negative) as the policy commits from exploration to exploitation. DQN's **TD loss** shows the classic
+rise-then-fall shape while its **exploration rate (ε)** anneals from 1.0 to 0.05. (REINFORCE, a custom
+non-SB3 agent, emits no optimizer logs.)
+
 ### Generalization
 Every model was evaluated on the **5 held-out test traces** it never saw during training. All generalized
 without catastrophic failure, but PPO held the smallest train-to-test gap and — validated behaviourally
 (see Chapter 4) — tracks demand rather than parking high. This carried through to a **real Kubernetes
 cluster**, where the PPO champion held the service with ~30% fewer replicas than native HPA.
+
+### Predictive Extension — Tested
+A common intuition is that an autoscaler should *anticipate* load, not just react. We tested this by
+extending the champion with one look-ahead feature (trend / forecast / oracle) and re-benchmarking on the
+held-out traces. The result was a clean **negative**: all three variants scored *significantly worse* than
+the reactive champion (paired t-tests, p < 0.0001), and even a perfect-foresight **oracle** lost — it ran
+slightly leaner but roughly doubled SLA breaches. At this control granularity, reaction is already
+near-optimal, so anticipation adds no usable value. Full analysis in Chapter 4 §4.6.1.
 
 ## Conclusion and Discussion
 
@@ -162,8 +178,11 @@ a meaningful autoscaling policy and carry it from simulation onto a live Kuberne
    collapsed to −402.61).
 5. **Beats the default HPA**: against the conservative HPA@50% teams deploy by default, PPO used ~19%
    fewer pods at equal reliability in simulation, and ~30% fewer replicas on a real cluster.
+6. **Anticipation doesn't help here**: adding look-ahead features (trend / forecast / oracle) made the
+   agent *worse* — even a perfect-foresight oracle lost to the reactive champion (§4.6.1), because
+   reaction is already near-optimal at 5-minute control granularity.
 
 **Future Work:**
-Add a **predictive (look-ahead) state feature** so the agent can pre-scale before peaks and beat a
-perfectly-tuned HPA on pure energy; explore **action masking** at the pod bounds; and extend the
-real-cluster study to more nodes and longer runs for a larger statistical sample.
+Explore **action masking** at the pod bounds; test **finer control intervals**, where anticipation might
+begin to matter (unlike the 5-minute steps here, where it did not); and extend the real-cluster study to
+more nodes and longer runs — with Prometheus and Locust — for a larger statistical sample.
