@@ -31,7 +31,10 @@ pipeline {
 
   post {
     always {
-      sh 'docker image prune -f || true'   // free disk on the agent
+      sh '''
+        docker image prune -f || true
+        docker system prune -f || true
+      '''   // free disk on the agent
     }
     success {
       echo "Pushed $IMAGE:latest (build $BUILD_NUMBER)"
