@@ -31,7 +31,7 @@ def get_engine():
 
 engine = get_engine()
 
-st.title("📈 Eco-Scale — RL Kubernetes Autoscaler")
+st.title("📈 Eco-Scale — RL Kubernetes Autoscaler (GitOps Live! 🚀)")
 st.caption(f"Deployed agent: **{engine.algorithm}** (run {engine.metadata.get('run')}) "
            f"· trained on real Alibaba cluster traces")
 
