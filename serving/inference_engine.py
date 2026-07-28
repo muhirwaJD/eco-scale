@@ -59,11 +59,11 @@ class InferenceEngine:
         print(f"📦 Initializing {self.algorithm} model loading sequence...")
 
         if self.algorithm == "DQN":
-            from stable_baselines3 import DQN
+            from stable_baselines3 import DQN # pyright: ignore [reportMissingImports]
 
             return DQN.load(path)
         elif self.algorithm == "PPO":
-            from stable_baselines3 import PPO
+            from stable_baselines3 import PPO # pyright: ignore [reportMissingImports]
 
             return PPO.load(path)
         else:

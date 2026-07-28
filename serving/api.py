@@ -17,9 +17,13 @@ Then open http://127.0.0.1:8000/docs for the interactive API.
 import os
 import sys
 
+# pyrefly: ignore [missing-import]
 from fastapi import FastAPI
+# pyright: ignore [reportMissingImports]
 from fastapi.middleware.cors import CORSMiddleware
+# pyright: ignore [reportMissingImports]
 from fastapi.staticfiles import StaticFiles
+# pyright: ignore [reportMissingImports]
 from pydantic import BaseModel, Field
 
 # ---------------------------------------------------------------------------

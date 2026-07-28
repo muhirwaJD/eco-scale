@@ -197,6 +197,7 @@ class LiveClusterEngine:
 
     def _probs(self, obs):
         try:
+            # pyright: ignore [reportMissingImports]
             import numpy as np
             tensor, _ = self.engine.model.policy.obs_to_tensor(np.array(obs, dtype=np.float32))
             dist = self.engine.model.policy.get_distribution(tensor)

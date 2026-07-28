@@ -11,6 +11,7 @@ frontend is a thin view, so the product never diverges from the tested code.
 
 import os
 import json
+# pyrefly: ignore [missing-import]
 import numpy as np
 
 from environment.custom_env import KubernetesEnv
@@ -92,6 +93,7 @@ class SimulationEngine:
     def _action_probs(self, obs):
         """PPO action preferences (down/hold/up) for the 'why not?' panel."""
         try:
+            # pyright: ignore [reportMissingImports]
             import torch
             tensor, _ = self.engine.model.policy.obs_to_tensor(np.array(obs, dtype=np.float32))
             dist = self.engine.model.policy.get_distribution(tensor)

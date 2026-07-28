@@ -13,7 +13,8 @@ Run:
 import os
 import sys
 import pandas as pd
-import streamlit as st
+# pyrefly: ignore [missing-import]
+import streamlit as st 
 
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 sys.path.insert(0, ROOT)

@@ -80,6 +80,7 @@ class KubernetesEnv(gym.Env):
                     f"No traces found in {trace_dir!r}. Pass trace_paths=[...] "
                     f"or run data/make_split.py to populate data/traces/.")
 
+        # Loading pre-cleaned numpy trace files into contiguous float32 arrays
         self.trace_paths = list(trace_paths)
         self.traces = [np.load(p).astype(np.float32) for p in self.trace_paths]
         self.trace = self.traces[0]          # active trace; reset() picks one per episode
