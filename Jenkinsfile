@@ -11,6 +11,31 @@ pipeline {
       steps { checkout scm }
     }
 
+    stage('SonarQube Analysis') {
+      steps {
+        script {
+          def scannerHome = tool 'rda-sonar-scanner' 
+          withSonarQubeEnv('Amalitech-Rda') {                
+            sh """
+              ${scannerHome}/bin/sonar-scanner \
+                -Dsonar.projectKey=eco-scale \
+                -Dsonar.projectName=eco-scale \
+                -Dsonar.sources=. \
+                -Dsonar.exclusions="**/node_modules/**,**/venv/**,**/__pycache__/**,**/dist/**,**/.git/**"
+            """
+          }
+        }
+      }
+    }
+
+    stage('Quality Gate') {
+      steps {
+        timeout(time: 5, unit: 'MINUTES') {
+          waitForQualityGate abortPipeline: true
+        }
+      }
+    }
+
     stage('Build image') {
       steps {
         sh 'docker build -t $IMAGE:$BUILD_NUMBER -t $IMAGE:latest .'
